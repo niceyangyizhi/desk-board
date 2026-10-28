@@ -432,7 +432,7 @@
     </div>
     <div id="statusline">
       <span id="statusL">正在载入</span>
-      <span class="r">三击时钟 · 编辑待办</span>
+      <span class="r"><span id="buildTag"></span>三击时钟 · 编辑待办</span>
     </div>
   </footer>
 </main>
@@ -611,6 +611,8 @@
       { time: "20:00", text: "读 20 页书", done: false }
     ]
   };
+
+  const BUILD = "v7";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -1562,6 +1564,7 @@
      ===================================================================== */
   function init() {
     if (!CONFIG.display.showHint) $(".r", $("#statusline")).style.visibility = "hidden";
+    $("#buildTag").textContent = BUILD + " · ";
 
     // 先用缓存秒开
     const cached = readJSON("board.weather", null);
