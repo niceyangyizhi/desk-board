@@ -727,6 +727,7 @@
     aqi: null,
     indoor: null,
     todos: [],
+    todosSavedAt: 0,
     history: {},
     todoDay: "",
     todoSource: "local",
@@ -926,12 +927,14 @@
 
   function saveTodos() {
     if (DEMO_MODE) return;
+    const now = Date.now();
+    state.todosSavedAt = now;
     const payload = {
       v: 3,
       day: state.todoDay,
       items: state.todos,
       history: state.history || {},
-      savedAt: Date.now()
+      savedAt: now
     };
     try {
       localStorage.setItem(TODO_KEY, JSON.stringify(payload));
@@ -966,6 +969,29 @@
     state.todoDay = today;
     saveTodos();
     return true;
+  }
+
+  // 另一处（Safari 标签页 / 主屏 App）改过数据时，把较新的那份同步过来
+  function syncFromStorage() {
+    if (DEMO_MODE) return;
+    const raw = readJSON(TODO_KEY, null);
+    if (!raw || !Array.isArray(raw.items)) return;
+    const stamp = raw.savedAt || 0;
+    if (stamp <= state.todosSavedAt) return;
+
+    state.todosSavedAt = stamp;
+    state.todos = raw.items.map(normTodo).filter(t => t.text);
+    state.history = {};
+    Object.keys(raw.history || {}).forEach(k => {
+      const d = raw.history[k];
+      if (d && Array.isArray(d.items)) state.history[k] = d;
+    });
+    state.todoDay = raw.day || dayKey();
+    rollOverDay();
+    renderTodos();
+    if (sheet.classList.contains("on")) renderSheet();
+    if (statsEl.classList.contains("on")) renderStats();
+    renderStatus();
   }
 
   async function loadTodos() {
@@ -1003,6 +1029,7 @@
       }
 
       state.todoDay = raw.day || dayKey();
+      state.todosSavedAt = raw.savedAt || 0;
       state.todoSource = "local";
       rollOverDay();
     } else {
@@ -1509,8 +1536,13 @@
       keepAwake();
       if (Date.now() - state.lastWeatherAt > CONFIG.weather.refreshMinutes * 60000) loadWeather();
       renderClock(true);
+      syncFromStorage();
     }
   });
+
+  // 从后台恢复 / 另一处写入时
+  window.addEventListener("pageshow", () => { renderClock(true); syncFromStorage(); });
+  window.addEventListener("storage", e => { if (e.key === TODO_KEY) syncFromStorage(); });
 
   // 部分浏览器要求先有用户手势才能申请常亮，首次触摸时补一次
   document.addEventListener("click", () => { if (!wakeLock) keepAwake(); }, { passive: true });
