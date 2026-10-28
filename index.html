@@ -612,7 +612,7 @@
     ]
   };
 
-  const BUILD = "v7";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
+  const BUILD = "v8";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -1539,6 +1539,7 @@
       if (Date.now() - state.lastWeatherAt > CONFIG.weather.refreshMinutes * 60000) loadWeather();
       renderClock(true);
       syncFromStorage();
+      checkBuild();
     }
   });
 
@@ -1560,7 +1561,30 @@
   }
 
   /* =====================================================================
-     15. 启动
+     15. 自动跟进新版本
+     ===================================================================== */
+  const VER_KEY = "board.lastCheck";
+
+  async function checkBuild() {
+    const now = Date.now();
+    if (now - (+readJSON(VER_KEY, 0) || 0) < 30 * 60000) return;
+    writeJSON(VER_KEY, now);
+    try {
+      const r = await fetch(location.pathname + "?t=" + now, { cache: "no-store" });
+      if (!r.ok) return;
+      const html = await r.text();
+      const m = html.match(/const BUILD = "([^"]+)"/);
+      if (!m || m[1] === BUILD) return;
+      // 线上已经是新版本：重载一次，并记住这次目标版本，避免反复刷新
+      const guard = "board.reload." + m[1];
+      if (sessionStorage.getItem(guard)) return;
+      sessionStorage.setItem(guard, "1");
+      location.reload();
+    } catch (e) {}
+  }
+
+  /* =====================================================================
+     16. 启动
      ===================================================================== */
   function init() {
     if (!CONFIG.display.showHint) $(".r", $("#statusline")).style.visibility = "hidden";
@@ -1594,6 +1618,7 @@
     if (params.has("stats")) setTimeout(openStats, 300);
 
     keepAwake();
+    setTimeout(checkBuild, 6000);
   }
 
   init();
