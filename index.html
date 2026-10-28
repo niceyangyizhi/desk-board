@@ -693,7 +693,7 @@
     ]
   };
 
-  const BUILD = "v15";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
+  const BUILD = "v16";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -1332,6 +1332,16 @@
     return slots[0] || { name: "健康提示", list: [] };
   }
 
+  // 时段的前半程显示时段专属，后半程显示通用
+  function slotHalf(slot) {
+    const p = nowParts();
+    const h = p.hh + p.mm / 60;
+    const from = slot.from, to = slot.to;
+    const dur = to > from ? to - from : to + 24 - from;
+    const elapsed = h >= from ? h - from : h + 24 - from;
+    return elapsed < dur / 2;
+  }
+
   function renderTip() {
     let text = "", label = "健康提示";
 
@@ -1341,11 +1351,11 @@
       text = cond;
       label = "今日提醒";
     } else {
-      // 2. 此刻所在时段（时段专属 + 通用池）
+      // 2. 此刻所在时段：前半程用时段专属，后半程用通用
       const slot = currentSlot();
-      const pool = (slot.list || []).concat(CONFIG.tips.general || []);
+      const si = Math.max(0, (CONFIG.tips.timeSlots || []).indexOf(slot));
+      const pool = slotHalf(slot) ? (slot.list || []) : (CONFIG.tips.general || []);
       if (pool.length) {
-        const si = Math.max(0, (CONFIG.tips.timeSlots || []).indexOf(slot));
         let idx;
         if (CONFIG.tips.mode === "rotate") {
           idx = (Math.floor(Date.now() / (CONFIG.tips.rotateMinutes * 60000)) + si * 3) % pool.length;
