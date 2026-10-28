@@ -427,7 +427,7 @@
 
   <footer id="footarea">
     <div id="tipbar">
-      <span class="k">健康提示</span>
+      <span class="k" id="tipLabel">健康提示</span>
       <span id="tip">—</span>
     </div>
     <div id="statusline">
@@ -545,6 +545,23 @@
     tips: {
       mode: "daily",          // "daily" | "rotate"
       rotateMinutes: 30,
+
+      // 按当天天气优先显示。命中第一条就停，顺序即优先级。
+      // 条件写法：rain / snow / storm / fog（布尔），或 temp>32、aqi>=100、hum>85、wind>=28
+      conditional: [
+        { cond: "storm",     text: "有雷阵雨，尽量别在空旷处停留。" },
+        { cond: "snow",      text: "有雪，路面湿滑，出门慢一点。" },
+        { cond: "rain",      text: "今天有雨，包里放把伞。" },
+        { cond: "fog",       text: "有雾，能见度低，路上当心。" },
+        { cond: "aqi>=150",  text: "空气很差，尽量待在室内，关好窗。" },
+        { cond: "aqi>=100",  text: "空气不太好，少开窗，出门戴口罩。" },
+        { cond: "temp<=5",   text: "今天很冷，出门多加一件。" },
+        { cond: "temp>=32",  text: "今天很热，多喝水，避开正午。" },
+        { cond: "wind>=28",  text: "风有点大，骑车打伞都当心。" },
+        { cond: "hum>=85",   text: "湿度很高，屋里注意通风除湿。" },
+        { cond: "hum<=35",   text: "空气很干，多喝水、护着点嘴唇。" }
+      ],
+
       list: [
         "起床后先喝一杯温水，比咖啡更早叫醒身体。",
         "每坐 45 分钟起身走 2 分钟，腰会感谢你。",
@@ -612,7 +629,7 @@
     ]
   };
 
-  const BUILD = "v8";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
+  const BUILD = "v9";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -871,6 +888,7 @@
     }
 
     $("#wmeta").innerHTML = meta.map(m => "<span>" + m[0] + "<b>" + m[1] + "</b></span>").join("");
+    renderTip();
   }
 
   /* =====================================================================
@@ -1111,23 +1129,78 @@
   /* =====================================================================
      10. 健康提示
      ===================================================================== */
-  let tipIndex = -1;
-  function renderTip() {
-    const list = CONFIG.tips.list;
-    if (!list.length) return;
-    let idx;
-    if (CONFIG.tips.mode === "rotate") {
-      idx = Math.floor(Date.now() / (CONFIG.tips.rotateMinutes * 60000)) % list.length;
-    } else {
-      const p = nowParts();
-      idx = dayOfYear(p.y, p.m, p.d) % list.length;
+  let tipText = "";
+
+  function tipContext() {
+    const w = state.weather;
+    if (!w) return null;
+    const c = w.code;
+    return {
+      rain: [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 96, 99].indexOf(c) >= 0,
+      snow: [71, 73, 75, 77, 85, 86].indexOf(c) >= 0,
+      storm: [95, 96, 99].indexOf(c) >= 0,
+      fog: [45, 48].indexOf(c) >= 0,
+      temp: w.temp,
+      feels: w.feels,
+      hum: w.hum,
+      wind: w.wind,
+      aqi: state.aqi && state.aqi.value != null ? state.aqi.value : null
+    };
+  }
+
+  // "aqi>=100" / "rain" 这样的小表达式
+  function matchCond(cond, c) {
+    if (!cond) return false;
+    const m = String(cond).trim().match(/^([a-z]+)\s*(>=|<=|>|<)?\s*(-?[\d.]+)?$/);
+    if (!m) return false;
+    const key = m[1], op = m[2], val = m[3] === undefined ? null : parseFloat(m[3]);
+    if (!op) return !!c[key];
+    if (c[key] == null || isNaN(val)) return false;
+    if (op === ">") return c[key] > val;
+    if (op === "<") return c[key] < val;
+    if (op === ">=") return c[key] >= val;
+    return c[key] <= val;
+  }
+
+  function pickConditional() {
+    const c = tipContext();
+    if (!c) return null;
+    const rules = CONFIG.tips.conditional || [];
+    for (let i = 0; i < rules.length; i++) {
+      if (matchCond(rules[i].cond, c)) return rules[i].text;
     }
-    if (idx === tipIndex) return;
-    tipIndex = idx;
+    return null;
+  }
+
+  function renderTip() {
+    const list = CONFIG.tips.list || [];
+    let text = "", label = "健康提示";
+
+    const cond = pickConditional();
+    if (cond) {
+      text = cond;
+      label = "今日提醒";
+    } else if (list.length) {
+      let idx;
+      if (CONFIG.tips.mode === "rotate") {
+        idx = Math.floor(Date.now() / (CONFIG.tips.rotateMinutes * 60000)) % list.length;
+      } else {
+        const p = nowParts();
+        idx = dayOfYear(p.y, p.m, p.d) % list.length;
+      }
+      text = list[idx];
+    }
+
+    if (!text || text === tipText) return;
+    tipText = text;
+
+    const lab = $("#tipLabel");
+    if (lab) lab.textContent = label;
+
     const el = $("#tip");
     el.classList.add("fade");
     setTimeout(() => {
-      el.textContent = list[idx];
+      el.textContent = text;
       el.classList.remove("fade");
     }, 220);
   }

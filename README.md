@@ -148,6 +148,20 @@ location: { name: "上海 · 徐汇", lat: 31.1884, lon: 121.4336, tz: "Asia/Sha
 
 `CONFIG.tips.list` 是纯文本数组，随便换成你自己的句子。`mode: "daily"` 每天换一条（更像纸），`"rotate"` 按 `rotateMinutes` 轮换。
 
+上面还叠了一层**按天气优先的提醒**（`CONFIG.tips.conditional`），命中第一条就停，**数组顺序即优先级**：
+
+```js
+conditional: [
+  { cond: "storm",    text: "有雷阵雨，尽量别在空旷处停留。" },
+  { cond: "aqi>=100", text: "空气不太好，少开窗，出门戴口罩。" },
+  { cond: "temp>=32", text: "今天很热，多喝水，避开正午。" }
+]
+```
+
+条件写法：`rain` / `snow` / `storm` / `fog` 四个开关，配合 `temp`、`feels`、`hum`、`wind`、`aqi` 五个数值加 `> < >= <=`。
+
+命中时页脚标签会从「健康提示」变成「**今日提醒**」，天气一刷新就跟着变；没有特殊情况才回到每日一句。
+
 ### 6. 外观
 
 ```js
@@ -250,6 +264,7 @@ ipad-eink-board/
 ├── preview-day.png  ← 日间效果
 ├── preview-dim.png  ← 夜间「暗纸」
 ├── preview-dark.png ← 夜间「反色」
+├── preview-rain.png  ← 雨天提醒
 ├── preview-stats.png ← 统计页
 └── preview-sheet.png ← 待办面板
 ```
