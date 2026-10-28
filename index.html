@@ -69,6 +69,7 @@
   .loc{font-size:13px;letter-spacing:.24em;color:var(--ink-2);white-space:nowrap}
   .loc .mark{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--ink-2);vertical-align:3px;margin-right:12px}
   .daynum{font-size:12.5px;letter-spacing:.16em;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .daynum .term{color:var(--ink-2)}
 
   /* ---------- 时间 + 天气 ---------- */
   #hero{
@@ -616,7 +617,7 @@
         { date: "2026-11-01", code: 2,  tmax: 20, tmin: 12 }
       ]
     },
-    aqi: { value: 100, pm: 57.5 },
+    aqi: { value: 42, pm: 15 },
     todos: [
       { time: "08:00", text: "晨跑 3 公里", done: true },
       { time: "09:30", text: "周会 · 产品评审", done: true },
@@ -629,7 +630,7 @@
     ]
   };
 
-  const BUILD = "v9";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
+  const BUILD = "v10";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -758,6 +759,78 @@
   /* =====================================================================
      6. 时钟 / 日期 / 夜间
      ===================================================================== */
+  /* ---------- 二十四节气（Meeus 太阳视黄经，误差 <15 分钟） ---------- */
+  const TERM_NAMES = ["小寒","大寒","立春","雨水","惊蛰","春分","清明","谷雨","立夏","小满","芒种","夏至",
+                      "小暑","大暑","立秋","处暑","白露","秋分","寒露","霜降","立冬","小雪","大雪","冬至"];
+
+  function sunLon(jd) {
+    const T = (jd - 2451545.0) / 36525;
+    const L0 = 280.46646 + 36000.76983 * T + 0.0003032 * T * T;
+    const M = (357.52911 + 35999.05029 * T - 0.0001537 * T * T) * Math.PI / 180;
+    const C = (1.914602 - 0.004817 * T - 0.000014 * T * T) * Math.sin(M)
+            + (0.019993 - 0.000101 * T) * Math.sin(2 * M)
+            + 0.000289 * Math.sin(3 * M);
+    const om = (125.04 - 1934.136 * T) * Math.PI / 180;
+    const lon = L0 + C - 0.00569 - 0.00478 * Math.sin(om);
+    return ((lon % 360) + 360) % 360;
+  }
+
+  function lonDelta(jd, target) {
+    const d = sunLon(jd) - target;
+    return ((d + 180) % 360 + 360) % 360 - 180;
+  }
+
+  // year 年第 idx 个节气（小寒 = 0）的精确时刻，返回毫秒
+  function termInstant(year, idx) {
+    const target = (285 + idx * 15) % 360;
+    let jd = Date.UTC(year, 0, 1) / 86400000 + 2440587.5;
+    for (let i = 0; i < 366; i++) {
+      const d0 = lonDelta(jd, target), d1 = lonDelta(jd + 1, target);
+      if (d0 < 0 && d1 >= 0) {
+        let l = jd, h = jd + 1;
+        for (let k = 0; k < 40; k++) {
+          const m = (l + h) / 2;
+          if (lonDelta(m, target) < 0) l = m; else h = m;
+        }
+        return ((l + h) / 2 - 2440587.5) * 86400000;
+      }
+      jd += 1;
+    }
+    return NaN;
+  }
+
+  // 该节气在北京时间那一天的 00:00（用 UTC 毫秒表示，方便直接比日期）
+  function termDay(year, idx) {
+    const d = new Date(termInstant(year, idx) + 8 * 3600000);
+    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  }
+
+  let termCache = { key: "", text: "" };
+  function termText() {
+    const p = nowParts();
+    const key = p.y + "-" + p.m + "-" + p.d;
+    if (termCache.key === key && termCache.text !== undefined) return termCache.text;
+
+    const today = Date.UTC(p.y, p.m - 1, p.d);
+    const list = [];
+    for (let i = 0; i < 24; i++) list.push({ t: termDay(p.y, i), i: i });
+    if (today < list[0].t) list.unshift({ t: termDay(p.y - 1, 23), i: 23 });
+    if (today >= list[list.length - 1].t) list.push({ t: termDay(p.y + 1, 0), i: 0 });
+
+    let prev = list[0], next = list[1];
+    for (let i = 0; i < list.length; i++) {
+      if (list[i].t <= today) prev = list[i];
+      else { next = list[i]; break; }
+    }
+    if (!next) next = prev;
+
+    const onDay = prev.t === today;
+    const days = Math.max(0, Math.round((next.t - today) / 86400000));
+    const text = (onDay ? "今日" : "") + TERM_NAMES[prev.i] + " · 距" + TERM_NAMES[next.i] + " " + days + " 天";
+    termCache = { key: key, text: text };
+    return text;
+  }
+
   let lastMinute = "";
 
   function renderClock(force) {
@@ -768,7 +841,8 @@
     lastMinute = hm;
 
     $("#clock").textContent = hm;
-    $("#daynum").textContent = p.y + "." + pad2(p.m) + "." + pad2(p.d) + " · " + p.wd;
+    $("#daynum").innerHTML = p.y + "." + pad2(p.m) + "." + pad2(p.d) + " · " + p.wd +
+      ' <span class="term">· ' + esc(termText()) + "</span>";
     $("#locName").textContent = CONFIG.location.name;
 
     applyNight(p.hh);
@@ -1639,6 +1713,7 @@
   const VER_KEY = "board.lastCheck";
 
   async function checkBuild() {
+    if (location.protocol === "file:") return;   // 本地双击打开时跳过
     const now = Date.now();
     if (now - (+readJSON(VER_KEY, 0) || 0) < 30 * 60000) return;
     writeJSON(VER_KEY, now);
