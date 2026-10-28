@@ -547,8 +547,8 @@
       mode: "daily",          // "daily" | "rotate"
       rotateMinutes: 30,
 
-      // 按当天天气优先显示。命中第一条就停，顺序即优先级。
-      // 条件写法：rain / snow / storm / fog（布尔），或 temp>32、aqi>=100、hum>85、wind>=28
+      // 第一层：按当天实况，命中第一条就停（顺序即优先级）
+      // 条件：rain / snow / storm / fog，或 temp>32、aqi>=100、hum>85、wind>=28
       conditional: [
         { cond: "storm",     text: "有雷阵雨，尽量别在空旷处停留。" },
         { cond: "snow",      text: "有雪，路面湿滑，出门慢一点。" },
@@ -563,32 +563,77 @@
         { cond: "hum<=35",   text: "空气很干，多喝水、护着点嘴唇。" }
       ],
 
-      list: [
-        "起床后先喝一杯温水，比咖啡更早叫醒身体。",
-        "每坐 45 分钟起身走 2 分钟，腰会感谢你。",
-        "看屏幕 20 分钟，抬头看 6 米外的东西 20 秒。",
-        "晒 10 分钟上午的太阳，帮身体校准生物钟。",
-        "下午三点后少喝咖啡，夜里会睡得更沉。",
-        "睡前 1 小时把屏幕调暗，或者干脆放下。",
-        "每天走 6000 步，比偶尔一次猛练更有用。",
-        "深绿色蔬菜每天一小把，抵得上一堆补剂。",
-        "口渴才喝水已经晚了半拍，桌上放个杯子。",
-        "久坐时勾一勾脚尖，帮小腿把血送回心脏。",
-        "午睡 20 分钟足够，超过 40 分钟反而更困。",
-        "睡前写下明天要做的三件事，脑子才能关机。",
-        "尽量用鼻子呼吸，张嘴呼吸会让喉咙更干。",
-        "每天同一时间起床，比同一时间睡觉更重要。",
-        "情绪上头时：吸气 4 秒，停 4 秒，呼气 6 秒。",
-        "吃饭时把手机放远一点，胃和脑子都更轻松。",
-        "房间每天通风两次，每次 10 分钟。",
-        "眼睛干涩时多眨眼，比滴眼药水更根本。",
-        "每周两次力量训练，是最划算的抗衰老。",
-        "晚上把灯调暖，让身体知道该休息了。",
-        "站着接电话，一天能多消耗不少热量。",
-        "睡前泡脚 10 分钟，入睡会快一些。",
-        "水果整颗吃，比榨汁保留更多纤维。",
-        "肩颈发酸时做「下巴后收」，每次 10 秒。"
-      ]
+      // 第二层：节气当天起 3 天内，显示这个节气对应的提醒
+      terms: {
+        "小寒": "小寒最冷，出门护住脖子和脚踝。",
+        "大寒": "大寒是最后一个节气，春天就在后面了。",
+        "立春": "春天从今天开始，作息可以慢慢往前调半小时。",
+        "雨水": "雨水前后湿气重，被子记得晒。",
+        "惊蛰": "惊蛰到，虫醒人也醒，早睡早起正当时。",
+        "春分": "春分昼夜等长，作息也调到平衡。",
+        "清明": "清明前后花粉多，过敏的人备好口罩。",
+        "谷雨": "谷雨湿气最盛，少吃生冷。",
+        "立夏": "立夏之后昼长夜短，中午补个二十分钟的觉。",
+        "小满": "小满湿热，衣服挑透气的穿。",
+        "芒种": "芒种忙，别拿熬夜换效率。",
+        "夏至": "夏至白昼最长，晚上反而要早睡。",
+        "小暑": "小暑开始热，补水比补觉更急。",
+        "大暑": "大暑一年最热，避开正午出门。",
+        "立秋": "立秋还在伏天里，别急着贴秋膘。",
+        "处暑": "处暑暑气止，晚上可以开窗睡了。",
+        "白露": "白露身不露，早晚加件薄外套。",
+        "秋分": "秋分之后夜变长，睡觉时间可以提前。",
+        "寒露": "寒露脚不露，袜子该穿上了。",
+        "霜降": "霜降进补，先把脾胃养好再吃厚味。",
+        "立冬": "立冬开始藏，比秋天早睡一点。",
+        "小雪": "小雪后日照少，中午出去晒十分钟。",
+        "大雪": "大雪时节屋里容易干，湿度 40%–60% 最舒服。",
+        "冬至": "冬至一阳生，今晚早点睡。"
+      },
+
+      // 第三层：按季节轮换。数组长度决定多久轮完一圈。
+      seasonal: {
+        spring: [
+          "春季风大，过敏的人出门戴口罩。",
+          "春天昼长夜短，可以比冬天早起半小时。",
+          "多晒太阳，春天情绪低落时尤其管用。",
+          "春捂别急着减衣，早晚温差还大。",
+          "春天容易犯困，中午小睡二十分钟。",
+          "春季适合把运动捡回来，从快走开始。",
+          "春天绿叶菜正当时，多吃一点。",
+          "花粉季回家先洗脸，别把花粉带上床。"
+        ],
+        summer: [
+          "出汗多的时候，水里加一点点盐。",
+          "正午紫外线最强，十一点到三点尽量别在外面。",
+          "空调别低于 26 度，室内外温差控制在 7 度内。",
+          "夏天食物坏得快，剩菜别过夜。",
+          "运动挑清晨或傍晚，闷热时段别硬练。",
+          "夏天喝水要主动，别等口渴。",
+          "冰饮解一时爽，胃会记很久。",
+          "夏天睡够七小时，白天才不用靠咖啡硬撑。"
+        ],
+        autumn: [
+          "秋天干燥，多喝温水，少吃辛辣。",
+          "早晚温差大，出门带件外套。",
+          "秋燥伤肺，梨、百合、银耳正当时。",
+          "秋天日照变短，午后出去晒十分钟。",
+          "秋季适合早睡，比夏天多睡半小时。",
+          "入秋运动别太猛，微汗就好。",
+          "秋天掉头发多，别熬夜，比什么护发素都管用。",
+          "秋天皮肤干，洗澡水别太烫。"
+        ],
+        winter: [
+          "冬天室内外温差大，进门别急着脱外套。",
+          "冬季日照少，中午出去走十分钟。",
+          "洗澡水温别太高，时间别太久。",
+          "睡前泡脚十五分钟，手脚暖了更好睡。",
+          "冬天容易忘记喝水，桌上放个保温杯。",
+          "室内湿度 40%–60% 最舒服，加湿器别开太猛。",
+          "冬天起床慢一点，先坐三十秒再下床。",
+          "冬季适合早睡，跟着太阳走。"
+        ]
+      }
     },
 
     display: {
@@ -630,7 +675,7 @@
     ]
   };
 
-  const BUILD = "v10";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
+  const BUILD = "v11";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -805,11 +850,12 @@
     return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
   }
 
-  let termCache = { key: "", text: "" };
-  function termText() {
+  let termInfoCache = { key: "", info: null };
+
+  function termInfoNow() {
     const p = nowParts();
     const key = p.y + "-" + p.m + "-" + p.d;
-    if (termCache.key === key && termCache.text !== undefined) return termCache.text;
+    if (termInfoCache.key === key && termInfoCache.info) return termInfoCache.info;
 
     const today = Date.UTC(p.y, p.m - 1, p.d);
     const list = [];
@@ -824,11 +870,30 @@
     }
     if (!next) next = prev;
 
-    const onDay = prev.t === today;
-    const days = Math.max(0, Math.round((next.t - today) / 86400000));
-    const text = (onDay ? "今日" : "") + TERM_NAMES[prev.i] + " · 距" + TERM_NAMES[next.i] + " " + days + " 天";
-    termCache = { key: key, text: text };
-    return text;
+    const info = {
+      prev: prev,
+      next: next,
+      daysToNext: Math.max(0, Math.round((next.t - today) / 86400000)),
+      since: Math.max(0, Math.round((today - prev.t) / 86400000))
+    };
+    termInfoCache = { key: key, info: info };
+    return info;
+  }
+
+  function termText() {
+    const info = termInfoNow();
+    const onDay = info.since === 0;
+    return (onDay ? "今日" : "") + TERM_NAMES[info.prev.i] +
+      " · 距" + TERM_NAMES[info.next.i] + " " + info.daysToNext + " 天";
+  }
+
+  // 立春→立夏 为春，以此类推（按节气而不是月份）
+  function seasonNow() {
+    const i = termInfoNow().prev.i;
+    if (i >= 2 && i <= 7) return "spring";
+    if (i >= 8 && i <= 13) return "summer";
+    if (i >= 14 && i <= 19) return "autumn";
+    return "winter";
   }
 
   let lastMinute = "";
@@ -1247,22 +1312,34 @@
   }
 
   function renderTip() {
-    const list = CONFIG.tips.list || [];
     let text = "", label = "健康提示";
 
     const cond = pickConditional();
+    const info = termInfoNow();
+    const termName = TERM_NAMES[info.prev.i];
+    const termTip = CONFIG.tips.terms && CONFIG.tips.terms[termName];
+
     if (cond) {
+      // 1. 当天实况（下雨、空气差…）
       text = cond;
       label = "今日提醒";
-    } else if (list.length) {
-      let idx;
-      if (CONFIG.tips.mode === "rotate") {
-        idx = Math.floor(Date.now() / (CONFIG.tips.rotateMinutes * 60000)) % list.length;
-      } else {
+    } else if (termTip && info.since <= 2) {
+      // 2. 节气当天起三天内
+      text = termTip;
+      label = "节气提醒";
+    } else {
+      // 3. 按季节轮换
+      const pool = (CONFIG.tips.seasonal && CONFIG.tips.seasonal[seasonNow()]) || [];
+      if (pool.length) {
         const p = nowParts();
-        idx = dayOfYear(p.y, p.m, p.d) % list.length;
+        let idx;
+        if (CONFIG.tips.mode === "rotate") {
+          idx = Math.floor(Date.now() / (CONFIG.tips.rotateMinutes * 60000)) % pool.length;
+        } else {
+          idx = dayOfYear(p.y, p.m, p.d) % pool.length;
+        }
+        text = pool[idx];
       }
-      text = list[idx];
     }
 
     if (!text || text === tipText) return;
