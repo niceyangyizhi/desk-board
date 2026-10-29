@@ -56,7 +56,7 @@
     position:relative;z-index:1;
     height:100%;
     display:flex;flex-direction:column;
-    padding:26px var(--pad-x) calc(25px + env(safe-area-inset-bottom, 0px));
+    padding:26px var(--pad-x) calc(20px + env(safe-area-inset-bottom, 0px));
     transition:transform 1s ease;
   }
 
@@ -136,8 +136,8 @@
     min-height:0;flex:0 1 auto;
   }
   .todo{
-    display:grid;grid-template-columns:20px 62px minmax(0,1fr);
-    align-items:end;gap:16px;
+    display:grid;grid-template-columns:20px 40px minmax(0,1fr);
+    align-items:end;gap:9px;
     padding:0 0 9px 1px;border-bottom:1px solid var(--rule);
     cursor:default;
   }
@@ -544,8 +544,7 @@
       seedFromJson: true,   // 第一次运行时用 todos.json 播一次种，之后完全本地
       dailyArchive: true,   // 每天跨天时把「当天完整清单」存进历史（含没做完的）
       url: "todos.json",    // 也可以点「从 todos.json 导入」手动覆盖
-      maxShow: 12,          // 每页条数
-      autoPageSeconds: 15   // 多于 1 页时自动翻页的间隔，0 = 不自动
+      maxShow: 12           // 每页条数
     },
 
     // 健康提示：daily 每天换一条 / rotate 按固定间隔轮换
@@ -699,7 +698,7 @@
     ]
   };
 
-  const BUILD = "v19";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
+  const BUILD = "v20";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -1807,11 +1806,6 @@
 
     setInterval(() => { renderClock(false); renderStatus(); }, 1000);
 
-    if (CONFIG.todos.autoPageSeconds > 0) {
-      setInterval(() => {
-        if (state.todoPages > 1) nextPage();
-      }, CONFIG.todos.autoPageSeconds * 1000);
-    }
     setInterval(loadWeather, Math.max(3, CONFIG.weather.refreshMinutes) * 60000);
     setInterval(loadAqi, Math.max(10, CONFIG.weather.refreshMinutes * 4) * 60000);
     setInterval(loadIndoor, Math.max(2, CONFIG.indoor.refreshMinutes) * 60000);
