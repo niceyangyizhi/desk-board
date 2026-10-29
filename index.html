@@ -56,7 +56,7 @@
     position:relative;z-index:1;
     height:100%;
     display:flex;flex-direction:column;
-    padding:26px var(--pad-x) calc(36px + env(safe-area-inset-bottom, 0px));
+    padding:26px var(--pad-x) calc(25px + env(safe-area-inset-bottom, 0px));
     transition:transform 1s ease;
   }
 
@@ -122,6 +122,8 @@
   }
   .sec .n{font-variant-numeric:tabular-nums;letter-spacing:.12em}
   #todoHead{cursor:pointer;justify-content:flex-start;gap:14px}
+  #todoPager{margin-left:auto;font-size:11.5px;letter-spacing:.14em;color:var(--muted);font-variant-numeric:tabular-nums}
+  #todoPager.on{cursor:pointer;color:var(--ink-2)}
 
   /* 两列：左右交替（1 2 / 3 4 / 5 6 …） */
   #todoList{
@@ -145,16 +147,17 @@
 
   .box{
     position:relative;top:0;
-    width:13px;height:13px;border:1px solid var(--ink-2);border-radius:2px;
+    width:17px;height:17px;margin-bottom:6px;      /* 抬起来，和文字的中线对齐 */
+    border:1px solid var(--ink-2);border-radius:2px;
     transition:background-color .25s ease,border-color .25s ease;
     cursor:pointer;
   }
   /* 扩大点击热区，但不影响文字区域 */
-  .box::before{content:"";position:absolute;inset:-16px -12px}
+  .box::before{content:"";position:absolute;inset:-13px -10px}
   .todo.done .box{background:var(--ink);border-color:var(--ink)}
   .todo.done .box::after{
-    content:"";position:absolute;left:4px;top:1px;width:4px;height:7.5px;
-    border-right:1.5px solid var(--paper);border-bottom:1.5px solid var(--paper);
+    content:"";position:absolute;left:5.5px;top:2px;width:5px;height:9px;
+    border-right:1.6px solid var(--paper);border-bottom:1.6px solid var(--paper);
     transform:rotate(38deg);
   }
   .todo .tm{
@@ -421,7 +424,7 @@
   </section>
 
   <section id="left">
-    <div class="sec" id="todoHead" role="button" tabindex="0"><span>今日</span><span class="n" id="todoProgress">0/0</span></div>
+    <div class="sec" id="todoHead"><span>今日</span><span class="n" id="todoProgress">0/0</span><span id="todoPager"></span></div>
     <ul id="todoList"></ul>
     <div class="addline" id="addLine" role="button" tabindex="0">
       <span class="plus">＋</span><span>添加待办</span><span class="more" id="addMore"></span>
@@ -541,7 +544,8 @@
       seedFromJson: true,   // 第一次运行时用 todos.json 播一次种，之后完全本地
       dailyArchive: true,   // 每天跨天时把「当天完整清单」存进历史（含没做完的）
       url: "todos.json",    // 也可以点「从 todos.json 导入」手动覆盖
-      maxShow: 12
+      maxShow: 12,          // 每页条数
+      autoPageSeconds: 15   // 多于 1 页时自动翻页的间隔，0 = 不自动
     },
 
     // 健康提示：daily 每天换一条 / rotate 按固定间隔轮换
@@ -695,7 +699,7 @@
     ]
   };
 
-  const BUILD = "v18";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
+  const BUILD = "v19";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -812,6 +816,8 @@
     aqi: null,
     indoor: null,
     todos: [],
+    todoPage: 0,
+    todoPages: 1,
     todosSavedAt: 0,
     history: {},
     todoDay: "",
@@ -1142,8 +1148,11 @@
     const done = list.filter(t => t.done).length;
     $("#todoProgress").textContent = done + "/" + list.length;
 
-    const max = CONFIG.todos.maxShow;
-    const shown = sortItems(list).slice(0, max);
+    const max = CONFIG.todos.maxShow || 12;
+    const sorted = sortItems(list);
+    state.todoPages = Math.max(1, Math.ceil(sorted.length / max));
+    if (state.todoPage >= state.todoPages) state.todoPage = 0;
+    const shown = sorted.slice(state.todoPage * max, state.todoPage * max + max);
 
     $("#todoList").innerHTML = shown.map(t =>
       '<li class="todo' + (t.done ? " done" : "") + '" data-id="' + t.id + '">' +
@@ -1155,9 +1164,25 @@
 
     $("#todoList").style.setProperty("--rows", String(Math.max(1, Math.ceil(shown.length / 2))));
 
-    const rest = list.length - shown.length;
-    $("#addMore").textContent = rest > 0 ? "还有 " + rest + " 项" : "";
+    $("#addMore").textContent = "";
+
+    const pager = $("#todoPager");
+    if (pager) {
+      if (state.todoPages > 1) {
+        pager.textContent = (state.todoPage + 1) + " / " + state.todoPages;
+        pager.classList.add("on");
+      } else {
+        pager.textContent = "";
+        pager.classList.remove("on");
+      }
+    }
     $("#left").classList.toggle("tight", shown.length > 12);
+  }
+
+  function nextPage() {
+    if (state.todoPages <= 1) return;
+    state.todoPage = (state.todoPage + 1) % state.todoPages;
+    renderTodos();
   }
 
   function addTodo(text, time) {
@@ -1429,6 +1454,11 @@
     } catch (err) {
       window.alert("读不到 todos.json。\n如果你是在本地双击打开的，浏览器不允许读同目录文件，属于正常现象。");
     }
+  });
+
+  $("#todoPager").addEventListener("click", e => {
+    e.stopPropagation();
+    nextPage();
   });
 
   // 入口：点「今日」、点「＋ 添加待办」、三击时钟
@@ -1776,6 +1806,12 @@
     loadTodos().then(renderStatus);
 
     setInterval(() => { renderClock(false); renderStatus(); }, 1000);
+
+    if (CONFIG.todos.autoPageSeconds > 0) {
+      setInterval(() => {
+        if (state.todoPages > 1) nextPage();
+      }, CONFIG.todos.autoPageSeconds * 1000);
+    }
     setInterval(loadWeather, Math.max(3, CONFIG.weather.refreshMinutes) * 60000);
     setInterval(loadAqi, Math.max(10, CONFIG.weather.refreshMinutes * 4) * 60000);
     setInterval(loadIndoor, Math.max(2, CONFIG.indoor.refreshMinutes) * 60000);
