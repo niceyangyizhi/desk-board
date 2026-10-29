@@ -56,7 +56,7 @@
     position:relative;z-index:1;
     height:100%;
     display:flex;flex-direction:column;
-    padding:26px var(--pad-x) calc(14px + env(safe-area-inset-bottom, 0px));
+    padding:26px var(--pad-x) calc(36px + env(safe-area-inset-bottom, 0px));
     transition:transform 1s ease;
   }
 
@@ -128,26 +128,29 @@
     list-style:none;margin:10px 0 0;padding:0;
     display:grid;
     grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-    grid-template-rows:repeat(var(--rows,1),74px);
+    grid-template-rows:repeat(var(--rows,1),62px);
     grid-auto-flow:row;
     column-gap:56px;row-gap:0;
     min-height:0;flex:0 1 auto;
   }
   .todo{
     display:grid;grid-template-columns:20px 62px minmax(0,1fr);
-    align-items:center;gap:16px;
-    padding:13px 0 13px 1px;border-bottom:1px solid var(--rule);
-    cursor:pointer;
+    align-items:end;gap:16px;
+    padding:0 0 9px 1px;border-bottom:1px solid var(--rule);
+    cursor:default;
   }
   /* 待办较多时压缩行高 */
-  #left.tight .todo{padding:6px 0 6px 1px}
+  #left.tight .todo{padding:0 0 5px 1px}
   #left.tight .todo .txt{font-size:20.5px}
 
   .box{
     position:relative;top:0;
     width:13px;height:13px;border:1px solid var(--ink-2);border-radius:2px;
     transition:background-color .25s ease,border-color .25s ease;
+    cursor:pointer;
   }
+  /* 扩大点击热区，但不影响文字区域 */
+  .box::before{content:"";position:absolute;inset:-16px -12px}
   .todo.done .box{background:var(--ink);border-color:var(--ink)}
   .todo.done .box::after{
     content:"";position:absolute;left:4px;top:1px;width:4px;height:7.5px;
@@ -692,7 +695,7 @@
     ]
   };
 
-  const BUILD = "v17";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
+  const BUILD = "v18";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -1143,8 +1146,8 @@
     const shown = sortItems(list).slice(0, max);
 
     $("#todoList").innerHTML = shown.map(t =>
-      '<li class="todo' + (t.done ? " done" : "") + '" data-id="' + t.id + '" role="button" tabindex="0">' +
-        '<span class="box"></span>' +
+      '<li class="todo' + (t.done ? " done" : "") + '" data-id="' + t.id + '">' +
+        '<span class="box" role="button" tabindex="0" aria-label="标记完成"></span>' +
         '<span class="tm">' + esc(t.time || "") + "</span>" +
         '<span class="txt">' + esc(t.text) + "</span>" +
       "</li>"
@@ -1185,9 +1188,10 @@
   }
 
   $("#todoList").addEventListener("click", e => {
-    const li = e.target.closest(".todo");
-    if (!li) return;
-    toggleTodo(li.dataset.id);
+    const box = e.target.closest(".box");
+    if (!box) return;                      // 点文字或空白不勾选
+    const li = box.closest(".todo");
+    if (li) toggleTodo(li.dataset.id);
   });
 
   /* =====================================================================
