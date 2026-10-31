@@ -182,6 +182,12 @@
     font-size:13px;line-height:1;color:var(--muted);
   }
   .addline .more{margin-left:auto;font-size:12px;letter-spacing:.08em;opacity:.9}
+  #poolBtn{
+    margin-left:14px;padding:0;background:none;border:none;
+    font-family:var(--sans);font-size:12px;letter-spacing:.1em;color:var(--muted);
+    cursor:pointer;font-variant-numeric:tabular-nums;
+  }
+  #poolBtn:active{color:var(--ink)}
   .addline:active{opacity:.55}
 
   /* ---------- 底部：健康提示 + 状态 ---------- */
@@ -211,6 +217,16 @@
     font-family:var(--sans);
   }
   #sheet.on{display:flex}
+
+  /* 今日 / 以后 */
+  .tabs{display:flex;gap:26px;margin-top:16px;border-bottom:1px solid var(--rule)}
+  .tab{
+    background:none;border:none;border-bottom:1px solid transparent;margin-bottom:-1px;
+    padding:0 0 10px;font-family:var(--sans);font-size:13px;letter-spacing:.16em;
+    color:var(--muted);cursor:pointer;
+  }
+  .tab.on{color:var(--ink);border-bottom-color:var(--ink)}
+  .tab .n{font-variant-numeric:tabular-nums;letter-spacing:.06em;margin-left:6px}
   .sheet-head{display:flex;align-items:baseline;gap:16px;padding-bottom:14px;border-bottom:1px solid var(--rule)}
   .sheet-head h2{font-family:var(--serif);font-weight:400;font-size:26px;letter-spacing:.14em;margin:0}
   .sheet-head .d{font-size:12.5px;letter-spacing:.1em;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -221,7 +237,13 @@
     padding:9px 22px;cursor:pointer;
   }
 
-  #addForm{display:grid;grid-template-columns:104px minmax(0,1fr) 52px;gap:12px;margin-top:18px}
+  #addForm{display:grid;grid-template-columns:104px minmax(0,1fr) 52px 60px;gap:12px;margin-top:16px}
+  #addForm.pool{grid-template-columns:minmax(0,1fr) 52px}
+  #addForm.pool #addTime,#addForm.pool #btnAddPool{display:none}
+  #btnAddPool{
+    background:transparent;border:1px solid var(--rule);border-radius:2px;
+    color:var(--ink-2);font-family:var(--sans);font-size:12.5px;letter-spacing:.1em;cursor:pointer;
+  }
   #addForm input{
     background:transparent;border:1px solid var(--rule);border-radius:2px;
     color:var(--ink);outline:none;width:100%;
@@ -243,10 +265,19 @@
 
   #sheetList{margin-top:10px;flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
   .srow{
-    display:grid;grid-template-columns:26px minmax(0,1fr) 104px 40px;
+    display:grid;grid-template-columns:26px minmax(0,1fr) 104px 56px 40px;
     align-items:center;gap:8px;
     border-bottom:1px solid var(--rule);
   }
+  .srow.pool{grid-template-columns:64px minmax(0,1fr) 84px 56px 40px}
+  .srow .age{font-size:11.5px;color:var(--muted);letter-spacing:.04em;font-variant-numeric:tabular-nums}
+  .srow .stale{font-size:11px;color:var(--muted);text-align:right;letter-spacing:.04em;white-space:nowrap}
+  .srow .stale.hot{color:var(--ink-2)}
+  .srow .mv{
+    background:none;border:none;color:var(--muted);cursor:pointer;padding:8px 0;
+    font-family:var(--sans);font-size:11px;letter-spacing:.06em;white-space:nowrap;
+  }
+  .srow .mv:active{color:var(--ink)}
   .srow .cb{
     width:17px;height:17px;border:1px solid var(--ink-2);border-radius:2px;
     background:transparent;position:relative;cursor:pointer;padding:0;
@@ -427,7 +458,9 @@
     <div class="sec" id="todoHead"><span>今日</span><span class="n" id="todoProgress">0/0</span><span id="todoPager"></span></div>
     <ul id="todoList"></ul>
     <div class="addline" id="addLine" role="button" tabindex="0">
-      <span class="plus">＋</span><span>添加待办</span><span class="more" id="addMore"></span>
+      <span class="plus">＋</span><span>添加待办</span>
+      <span class="more" id="addMore"></span>
+      <button id="poolBtn" type="button">以后 ›</button>
     </div>
   </section>
 
@@ -445,9 +478,14 @@
 
 <div id="sheet">
   <div class="sheet-head">
-    <h2>今日待办</h2>
+    <h2 id="sheetTitle">今日待办</h2>
     <span class="d" id="sheetDate"></span>
     <button class="x" id="btnClose">完成</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" id="tabToday" type="button" data-tab="today">今日<span class="n" id="tabTodayN"></span></button>
+    <button class="tab" id="tabPool" type="button" data-tab="pool">以后<span class="n" id="tabPoolN"></span></button>
   </div>
 
   <form id="addForm" autocomplete="off">
@@ -455,6 +493,7 @@
     <input id="addText" type="text" placeholder="添加一件事…" enterkeyhint="done"
            autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="待办内容">
     <button id="btnAdd" type="submit" aria-label="添加">＋</button>
+    <button id="btnAddPool" type="button" aria-label="记到以后">以后</button>
   </form>
 
   <div id="sheetList"></div>
@@ -698,7 +737,7 @@
     ]
   };
 
-  const BUILD = "v20";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
+  const BUILD = "v21";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -815,6 +854,8 @@
     aqi: null,
     indoor: null,
     todos: [],
+    pool: [],
+    sheetTab: "today",
     todoPage: 0,
     todoPages: 1,
     todosSavedAt: 0,
@@ -1022,9 +1063,10 @@
     const now = Date.now();
     state.todosSavedAt = now;
     const payload = {
-      v: 3,
+      v: 4,
       day: state.todoDay,
       items: state.todos,
+      pool: state.pool || [],
       history: state.history || {},
       savedAt: now
     };
@@ -1073,6 +1115,7 @@
 
     state.todosSavedAt = stamp;
     state.todos = raw.items.map(normTodo).filter(t => t.text);
+    state.pool = Array.isArray(raw.pool) ? raw.pool.map(p => ({ id: p.id || uid(), text: String(p.text || ""), at: p.at || 0 })).filter(p => p.text) : [];
     state.history = {};
     Object.keys(raw.history || {}).forEach(k => {
       const d = raw.history[k];
@@ -1092,6 +1135,7 @@
 
     if (DEMO_MODE) {
       state.todos = DEMO.todos.map(normTodo);
+      state.pool = (DEMO.pool || []).map(p => ({ id: p.id, text: p.text, at: p.at }));
       state.todoSource = "demo";
       renderTodos();
       return;
@@ -1101,6 +1145,7 @@
 
     if (raw && Array.isArray(raw.items)) {
       state.todos = raw.items.map(normTodo).filter(t => t.text);
+      state.pool = Array.isArray(raw.pool) ? raw.pool.map(p => ({ id: p.id || uid(), text: String(p.text || ""), at: p.at || 0 })).filter(p => p.text) : [];
 
       // 历史：v3 直接读；v2 的 archive（只有已完成项）迁移过来
       state.history = {};
@@ -1127,6 +1172,7 @@
     } else {
       // 第一次运行：用 todos.json 播一次种，之后不再自动覆盖
       state.todos = [];
+      state.pool = [];
       state.history = {};
       if (CONFIG.todos.seedFromJson) {
         try {
@@ -1163,7 +1209,10 @@
 
     $("#todoList").style.setProperty("--rows", String(Math.max(1, Math.ceil(shown.length / 2))));
 
-    $("#addMore").textContent = "";
+    const allDone = list.length > 0 && done === list.length;
+    $("#addMore").textContent = allDone ? "今天都做完了" : "";
+    const pb = $("#poolBtn");
+    if (pb) pb.textContent = state.pool.length ? "以后 " + state.pool.length + " ›" : "以后 ›";
 
     const pager = $("#todoPager");
     if (pager) {
@@ -1208,6 +1257,48 @@
     saveTodos();
     renderTodos();
     if (sheet && sheet.classList.contains("on")) renderSheet();
+    renderStatus();
+  }
+
+  function addToPool(text) {
+    const t = String(text || "").trim();
+    if (!t) return;
+    state.pool.unshift({ id: uid(), text: t, at: Date.now() });
+    saveTodos();
+    renderTodos();
+    if (sheet.classList.contains("on")) renderSheet();
+    renderStatus();
+  }
+
+  function deletePoolItem(id) {
+    state.pool = state.pool.filter(x => x.id !== id);
+    saveTodos();
+    renderTodos();
+    if (sheet.classList.contains("on")) renderSheet();
+    renderStatus();
+  }
+
+  function moveToPool(id) {
+    const i = state.todos.findIndex(t => t.id === id);
+    if (i < 0) return;
+    const it = state.todos[i];
+    state.todos.splice(i, 1);
+    state.pool.unshift({ id: it.id, text: it.text, at: Date.now() });
+    saveTodos();
+    renderTodos();
+    if (sheet.classList.contains("on")) renderSheet();
+    renderStatus();
+  }
+
+  function moveToToday(id) {
+    const i = state.pool.findIndex(x => x.id === id);
+    if (i < 0) return;
+    const it = state.pool[i];
+    state.pool.splice(i, 1);
+    state.todos.push({ id: it.id, time: "", text: it.text, done: false });
+    saveTodos();
+    renderTodos();
+    if (sheet.classList.contains("on")) renderSheet();
     renderStatus();
   }
 
@@ -1350,8 +1441,43 @@
     const p = nowParts();
     $("#sheetDate").textContent = p.m + "月" + p.d + "日 · " + p.wd;
 
-    const list = sortItems(state.todos);
+    const isPool = state.sheetTab === "pool";
+    $("#sheetTitle").textContent = isPool ? "以后要做" : "今日待办";
+    $("#tabToday").classList.toggle("on", !isPool);
+    $("#tabPool").classList.toggle("on", isPool);
+    $("#tabTodayN").textContent = state.todos.length ? state.todos.length : "";
+    $("#tabPoolN").textContent = state.pool.length ? state.pool.length : "";
+    $("#addForm").classList.toggle("pool", isPool);
+    $("#btnClearDone").style.display = isPool ? "none" : "";
+    $("#addText").placeholder = isPool ? "记一件以后要做的事…" : "添加一件事…";
+
     const box = $("#sheetList");
+
+    if (isPool) {
+      if (!state.pool.length) {
+        box.innerHTML = '<div class="empty">还没有记下的事。想到什么不急着做的，先扔进来。</div>';
+        return;
+      }
+      box.innerHTML = state.pool.map(it => {
+        const at = it.at || Date.now();
+        const days = Math.floor((Date.now() - at) / 86400000);
+        const d = new Date(at);
+        const md = (d.getMonth() + 1) + "/" + d.getDate();
+        const weeks = Math.floor(days / 7);
+        const stale = days >= 14 && weeks >= 2 ? "搁了 " + weeks + " 周" : "";
+        return '<div class="srow pool" data-id="' + it.id + '">' +
+          '<span class="age">' + md + "</span>" +
+          '<input class="t" data-act="text" value="' + esc(it.text) +
+            '" enterkeyhint="done" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="内容">' +
+          '<span class="stale' + (stale ? " hot" : "") + '">' + stale + "</span>" +
+          '<button class="mv" data-act="toToday">→ 今日</button>' +
+          '<button class="del" data-act="del" aria-label="删除">×</button>' +
+        "</div>";
+      }).join("");
+      return;
+    }
+
+    const list = sortItems(state.todos);
     if (!list.length) {
       box.innerHTML = '<div class="empty">还没有待办。在上面的输入框写一条就行。</div>';
       return;
@@ -1362,12 +1488,14 @@
         '<input class="t" data-act="text" value="' + esc(t.text) +
           '" enterkeyhint="done" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="内容">' +
         '<input class="tm" type="time" data-act="time" value="' + esc(t.time || "") + '" aria-label="时间">' +
+        '<button class="mv" data-act="toPool" aria-label="移到以后">↓ 以后</button>' +
         '<button class="del" data-act="del" aria-label="删除">×</button>' +
       "</div>"
     ).join("");
   }
 
-  function openSheet() {
+  function openSheet(tab) {
+    if (tab) state.sheetTab = tab;
     renderSheet();
     sheet.classList.add("on");
     setTimeout(() => { const el = $("#addText"); if (el) el.focus(); }, 90);
@@ -1384,19 +1512,39 @@
     e.preventDefault();
     const text = $("#addText").value;
     if (!text.trim()) { $("#addText").focus(); return; }
-    addTodo(text, $("#addTime").value);
+    if (state.sheetTab === "pool") {
+      addToPool(text);
+    } else {
+      addTodo(text, $("#addTime").value);
+      $("#addTime").value = "";
+    }
+    $("#addText").value = "";
+    $("#addText").focus();
+  });
+
+  $("#btnAddPool").addEventListener("click", () => {
+    const text = $("#addText").value;
+    if (!text.trim()) { $("#addText").focus(); return; }
+    addToPool(text);
     $("#addText").value = "";
     $("#addTime").value = "";
     $("#addText").focus();
   });
+
+  $("#tabToday").addEventListener("click", () => { state.sheetTab = "today"; renderSheet(); });
+  $("#tabPool").addEventListener("click", () => { state.sheetTab = "pool"; renderSheet(); });
 
   $("#sheetList").addEventListener("click", e => {
     const el = e.target.closest("[data-act]");
     if (!el) return;
     const row = el.closest(".srow");
     if (!row) return;
-    if (el.dataset.act === "toggle") { toggleTodo(row.dataset.id); renderSheet(); }
-    if (el.dataset.act === "del") deleteTodo(row.dataset.id);
+    const id = row.dataset.id;
+    const act = el.dataset.act;
+    if (act === "toggle") { toggleTodo(id); renderSheet(); }
+    if (act === "del") { if (state.sheetTab === "pool") deletePoolItem(id); else deleteTodo(id); }
+    if (act === "toPool") moveToPool(id);
+    if (act === "toToday") moveToToday(id);
   });
 
   $("#sheetList").addEventListener("change", e => {
@@ -1405,9 +1553,21 @@
     if (act !== "text" && act !== "time") return;
     const row = el.closest(".srow");
     if (!row) return;
+
+    if (state.sheetTab === "pool") {
+      const item = state.pool.find(x => x.id === row.dataset.id);
+      if (!item) return;
+      const v = el.value.trim();
+      if (!v) { deletePoolItem(item.id); return; }
+      item.text = v;
+      saveTodos();
+      renderSheet();
+      renderTodos();
+      return;
+    }
+
     const item = state.todos.find(x => x.id === row.dataset.id);
     if (!item) return;
-
     if (act === "text") {
       const v = el.value.trim();
       if (!v) { deleteTodo(item.id); return; }
@@ -1463,15 +1623,17 @@
   // 入口：点「今日」、点「＋ 添加待办」、三击时钟
   ["#todoHead", "#addLine"].forEach(sel => {
     const el = $(sel);
-    if (el) el.addEventListener("click", openSheet);
+    if (el) el.addEventListener("click", () => openSheet("today"));
   });
+
+  $("#poolBtn").addEventListener("click", e => { e.stopPropagation(); openSheet("pool"); });
 
   let taps = 0, tapTimer = null;
   $("#clock").addEventListener("click", () => {
     taps++;
     clearTimeout(tapTimer);
     tapTimer = setTimeout(() => { taps = 0; }, 700);
-    if (taps >= 3) { taps = 0; clearTimeout(tapTimer); openSheet(); }
+    if (taps >= 3) { taps = 0; clearTimeout(tapTimer); openSheet("today"); }
   });
 
   document.addEventListener("keydown", e => {
@@ -1635,10 +1797,11 @@
   function buildBackup() {
     return {
       app: "eink-board",
-      v: 3,
+      v: 4,
       exportedAt: new Date().toISOString(),
       day: state.todoDay,
       items: state.todos,
+      pool: state.pool || [],
       history: state.history || {}
     };
   }
@@ -1650,6 +1813,7 @@
     if (!items && !hist) throw new Error("bad");
 
     state.todos = (items || []).map(normTodo).filter(t => t.text);
+    state.pool = Array.isArray(data.pool) ? data.pool.map(p => ({ id: p.id || uid(), text: String(p.text || ""), at: p.at || 0 })).filter(p => p.text) : [];
     state.history = {};
     Object.keys(hist || {}).forEach(k => {
       const d = hist[k];
