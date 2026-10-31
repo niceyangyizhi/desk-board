@@ -258,7 +258,7 @@
 
   #sheetList{margin-top:10px;flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
   .srow{
-    display:grid;grid-template-columns:26px 66px minmax(0,1fr) 56px 40px;
+    display:grid;grid-template-columns:26px minmax(0,1fr) 56px 40px;
     align-items:center;gap:8px;
     border-bottom:1px solid var(--rule);
   }
@@ -288,15 +288,6 @@
     -webkit-user-select:text;user-select:text;
   }
   .srow.done input.t{color:var(--muted);text-decoration:line-through}
-  .srow input.tm::-webkit-calendar-picker-indicator{opacity:0;position:absolute;inset:0;width:100%;cursor:pointer}
-  .srow input.tm{
-    position:relative;
-    background:transparent;border:none;outline:none;
-    font-family:var(--sans);font-size:13px;color:var(--muted);
-    text-align:left;padding:14px 0;width:100%;
-    letter-spacing:.04em;font-variant-numeric:tabular-nums;
-    -webkit-appearance:none;appearance:none;
-  }
   .srow .del{
     background:transparent;border:none;color:var(--muted);
     font-size:21px;line-height:1;cursor:pointer;padding:8px 0;
@@ -732,7 +723,7 @@
     ]
   };
 
-  const BUILD = "v23";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
+  const BUILD = "v24";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -1480,9 +1471,6 @@
     box.innerHTML = list.map(t =>
       '<div class="srow' + (t.done ? " done" : "") + '" data-id="' + t.id + '">' +
         '<button class="cb" data-act="toggle" aria-label="标记完成"></button>' +
-        (t.time
-          ? '<input class="tm" type="time" data-act="time" value="' + esc(t.time) + '" aria-label="时间">'
-          : '<span class="tm"></span>') +
         '<input class="t" data-act="text" value="' + esc(t.text) +
           '" enterkeyhint="done" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="内容">' +
         '<button class="mv" data-act="toPool" aria-label="移到以后">↓ 以后</button>' +
@@ -1545,7 +1533,7 @@
   $("#sheetList").addEventListener("change", e => {
     const el = e.target;
     const act = el.dataset && el.dataset.act;
-    if (act !== "text" && act !== "time") return;
+    if (act !== "text") return;
     const row = el.closest(".srow");
     if (!row) return;
 
@@ -1563,17 +1551,12 @@
 
     const item = state.todos.find(x => x.id === row.dataset.id);
     if (!item) return;
-    if (act === "text") {
-      const v = el.value.trim();
-      if (!v) { deleteTodo(item.id); return; }
-      item.text = v;
-    } else {
-      item.time = el.value || "";
-    }
+    const v = el.value.trim();
+    if (!v) { deleteTodo(item.id); return; }
+    item.text = v;
     saveTodos();
     renderTodos();
     renderStatus();
-    if (act === "time") renderSheet();
   });
 
   $("#sheetList").addEventListener("keydown", e => {
