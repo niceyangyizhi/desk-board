@@ -237,9 +237,9 @@
     padding:9px 22px;cursor:pointer;
   }
 
-  #addForm{display:grid;grid-template-columns:104px minmax(0,1fr) 52px 60px;gap:12px;margin-top:16px}
+  #addForm{display:grid;grid-template-columns:minmax(0,1fr) 52px 60px;gap:12px;margin-top:16px}
   #addForm.pool{grid-template-columns:minmax(0,1fr) 52px}
-  #addForm.pool #addTime,#addForm.pool #btnAddPool{display:none}
+  #addForm.pool #btnAddPool{display:none}
   #btnAddPool{
     background:transparent;border:1px solid var(--rule);border-radius:2px;
     color:var(--ink-2);font-family:var(--sans);font-size:12.5px;letter-spacing:.1em;cursor:pointer;
@@ -250,13 +250,6 @@
     font-family:var(--serif);font-size:19px;padding:13px 15px;
     -webkit-user-select:text;user-select:text;
   }
-  #addForm #addTime{
-    font-family:var(--sans);font-size:16px;color:var(--ink-2);
-    padding:13px 6px;text-align:center;
-    -webkit-appearance:none;appearance:none;
-  }
-  input[type="time"]::-webkit-calendar-picker-indicator{opacity:0;width:100%;position:absolute;inset:0;cursor:pointer}
-  #addForm #addTime{position:relative}
   #addForm input::placeholder{color:var(--muted);font-family:var(--sans);font-size:15px;letter-spacing:.04em}
   #addForm #btnAdd{
     background:var(--ink);color:var(--paper);border:none;border-radius:2px;
@@ -295,7 +288,9 @@
     -webkit-user-select:text;user-select:text;
   }
   .srow.done input.t{color:var(--muted);text-decoration:line-through}
+  .srow input.tm::-webkit-calendar-picker-indicator{opacity:0;position:absolute;inset:0;width:100%;cursor:pointer}
   .srow input.tm{
+    position:relative;
     background:transparent;border:none;outline:none;
     font-family:var(--sans);font-size:13px;color:var(--muted);
     text-align:left;padding:14px 0;width:100%;
@@ -421,7 +416,7 @@
     .todo{grid-template-columns:18px 54px minmax(0,1fr);gap:12px}
     #tip{font-size:15px}
     #sheet{padding:20px 18px calc(18px + env(safe-area-inset-bottom, 0px))}
-    #addForm{grid-template-columns:90px minmax(0,1fr) 46px;gap:8px}
+    #addForm{grid-template-columns:minmax(0,1fr) 46px 54px;gap:8px}
     .srow{grid-template-columns:23px minmax(0,1fr) 86px 34px;gap:6px}
     #stats{padding:20px 16px calc(16px + env(safe-area-inset-bottom, 0px))}
     .st-head{gap:10px;flex-wrap:wrap}
@@ -490,7 +485,6 @@
   </div>
 
   <form id="addForm" autocomplete="off">
-    <input id="addTime" type="time" aria-label="时间（可留空）">
     <input id="addText" type="text" placeholder="添加一件事…" enterkeyhint="done"
            autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="待办内容">
     <button id="btnAdd" type="submit" aria-label="添加">＋</button>
@@ -738,7 +732,7 @@
     ]
   };
 
-  const BUILD = "v22";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
+  const BUILD = "v23";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -1486,7 +1480,9 @@
     box.innerHTML = list.map(t =>
       '<div class="srow' + (t.done ? " done" : "") + '" data-id="' + t.id + '">' +
         '<button class="cb" data-act="toggle" aria-label="标记完成"></button>' +
-        '<input class="tm" type="time" data-act="time" value="' + esc(t.time || "") + '" aria-label="时间">' +
+        (t.time
+          ? '<input class="tm" type="time" data-act="time" value="' + esc(t.time) + '" aria-label="时间">'
+          : '<span class="tm"></span>') +
         '<input class="t" data-act="text" value="' + esc(t.text) +
           '" enterkeyhint="done" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="内容">' +
         '<button class="mv" data-act="toPool" aria-label="移到以后">↓ 以后</button>' +
@@ -1516,8 +1512,7 @@
     if (state.sheetTab === "pool") {
       addToPool(text);
     } else {
-      addTodo(text, $("#addTime").value);
-      $("#addTime").value = "";
+      addTodo(text, "");
     }
     $("#addText").value = "";
     $("#addText").focus();
@@ -1528,7 +1523,6 @@
     if (!text.trim()) { $("#addText").focus(); return; }
     addToPool(text);
     $("#addText").value = "";
-    $("#addTime").value = "";
     $("#addText").focus();
   });
 
