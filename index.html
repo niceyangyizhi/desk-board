@@ -233,13 +233,7 @@
     padding:9px 22px;cursor:pointer;
   }
 
-  #addForm{display:grid;grid-template-columns:minmax(0,1fr) 52px 60px;gap:12px;margin-top:16px}
-  #addForm.pool{grid-template-columns:minmax(0,1fr) 52px}
-  #addForm.pool #btnAddPool{display:none}
-  #btnAddPool{
-    background:transparent;border:1px solid var(--rule);border-radius:2px;
-    color:var(--ink-2);font-family:var(--sans);font-size:12.5px;letter-spacing:.1em;cursor:pointer;
-  }
+  #addForm{display:grid;grid-template-columns:minmax(0,1fr) 52px;gap:12px;margin-top:16px}
   #addForm input{
     background:transparent;border:1px solid var(--rule);border-radius:2px;
     color:var(--ink);outline:none;width:100%;
@@ -403,7 +397,7 @@
     .todo{grid-template-columns:18px 54px minmax(0,1fr);gap:12px}
     #tip{font-size:15px}
     #sheet{padding:20px 18px calc(18px + env(safe-area-inset-bottom, 0px))}
-    #addForm{grid-template-columns:minmax(0,1fr) 46px 54px;gap:8px}
+    #addForm{grid-template-columns:minmax(0,1fr) 46px;gap:8px}
     .srow{grid-template-columns:23px minmax(0,1fr) 86px 34px;gap:6px}
     #stats{padding:20px 16px calc(16px + env(safe-area-inset-bottom, 0px))}
     .st-head{gap:10px;flex-wrap:wrap}
@@ -475,7 +469,6 @@
     <input id="addText" type="text" placeholder="添加一件事…" enterkeyhint="done"
            autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="待办内容">
     <button id="btnAdd" type="submit" aria-label="添加">＋</button>
-    <button id="btnAddPool" type="button" aria-label="记到以后">以后</button>
   </form>
 
   <div id="sheetList"></div>
@@ -723,7 +716,7 @@
     ]
   };
 
-  const BUILD = "v25";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
+  const BUILD = "v26";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -1501,14 +1494,6 @@
     } else {
       addTodo(text, "");
     }
-    $("#addText").value = "";
-    $("#addText").focus();
-  });
-
-  $("#btnAddPool").addEventListener("click", () => {
-    const text = $("#addText").value;
-    if (!text.trim()) { $("#addText").focus(); return; }
-    addToPool(text);
     $("#addText").value = "";
     $("#addText").focus();
   });
