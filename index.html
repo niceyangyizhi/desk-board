@@ -265,7 +265,7 @@
 
   #sheetList{margin-top:10px;flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
   .srow{
-    display:grid;grid-template-columns:26px minmax(0,1fr) 104px 56px 40px;
+    display:grid;grid-template-columns:26px 66px minmax(0,1fr) 56px 40px;
     align-items:center;gap:8px;
     border-bottom:1px solid var(--rule);
   }
@@ -297,8 +297,9 @@
   .srow.done input.t{color:var(--muted);text-decoration:line-through}
   .srow input.tm{
     background:transparent;border:none;outline:none;
-    font-family:var(--sans);font-size:16px;color:var(--ink-2);
-    text-align:right;padding:14px 0;width:100%;
+    font-family:var(--sans);font-size:13px;color:var(--muted);
+    text-align:left;padding:14px 0;width:100%;
+    letter-spacing:.04em;font-variant-numeric:tabular-nums;
     -webkit-appearance:none;appearance:none;
   }
   .srow .del{
@@ -737,7 +738,7 @@
     ]
   };
 
-  const BUILD = "v21";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
+  const BUILD = "v22";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -1485,9 +1486,9 @@
     box.innerHTML = list.map(t =>
       '<div class="srow' + (t.done ? " done" : "") + '" data-id="' + t.id + '">' +
         '<button class="cb" data-act="toggle" aria-label="标记完成"></button>' +
+        '<input class="tm" type="time" data-act="time" value="' + esc(t.time || "") + '" aria-label="时间">' +
         '<input class="t" data-act="text" value="' + esc(t.text) +
           '" enterkeyhint="done" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="内容">' +
-        '<input class="tm" type="time" data-act="time" value="' + esc(t.time || "") + '" aria-label="时间">' +
         '<button class="mv" data-act="toPool" aria-label="移到以后">↓ 以后</button>' +
         '<button class="del" data-act="del" aria-label="删除">×</button>' +
       "</div>"
