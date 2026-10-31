@@ -136,8 +136,8 @@
     min-height:0;flex:0 1 auto;
   }
   .todo{
-    display:grid;grid-template-columns:20px 40px minmax(0,1fr);
-    align-items:end;gap:9px;
+    display:grid;grid-template-columns:20px minmax(0,1fr);
+    align-items:end;gap:14px;
     padding:0 0 9px 1px;border-bottom:1px solid var(--rule);
     cursor:default;
   }
@@ -159,10 +159,6 @@
     content:"";position:absolute;left:5.5px;top:2px;width:5px;height:9px;
     border-right:1.6px solid var(--paper);border-bottom:1.6px solid var(--paper);
     transform:rotate(38deg);
-  }
-  .todo .tm{
-    font-size:13.5px;color:var(--muted);letter-spacing:.08em;
-    font-variant-numeric:tabular-nums;white-space:nowrap;
   }
   .todo .txt{
     font-family:var(--serif);font-size:22px;line-height:1.34;letter-spacing:.01em;color:var(--ink);
@@ -720,10 +716,14 @@
       { time: "13:00", text: "缴水电费", done: false },
       { time: "",      text: "买咖啡豆、换净水滤芯", done: false },
       { time: "20:00", text: "读 20 页书", done: false }
+    ],
+    pool: [
+      { id: "p1", text: "换净水器滤芯", at: Date.now() - 3 * 86400000 },
+      { id: "p2", text: "把阳台的花架装起来", at: Date.now() - 18 * 86400000 }
     ]
   };
 
-  const BUILD = "v24";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
+  const BUILD = "v25";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -1188,7 +1188,6 @@
     $("#todoList").innerHTML = shown.map(t =>
       '<li class="todo' + (t.done ? " done" : "") + '" data-id="' + t.id + '">' +
         '<span class="box" role="button" tabindex="0" aria-label="标记完成"></span>' +
-        '<span class="tm">' + esc(t.time || "") + "</span>" +
         '<span class="txt">' + esc(t.text) + "</span>" +
       "</li>"
     ).join("");
