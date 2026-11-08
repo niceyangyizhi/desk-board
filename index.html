@@ -523,6 +523,7 @@
     <button id="btnExport">导出备份</button>
     <button id="btnImportBackup">恢复备份</button>
     <button id="btnRestoreBak">恢复上一版</button>
+    <button id="btnSnap">回滚快照</button>
     <input type="file" id="fileBackup" accept="application/json,.json" hidden>
     <span class="note" id="backupNote">从未备份</span>
   </div>
@@ -728,7 +729,7 @@
     ]
   };
 
-  const BUILD = "v33";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
+  const BUILD = "v34";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -1051,6 +1052,39 @@
     });
   }
 
+  const SNAP_PREFIX = "board.snap.";
+
+  function snapToday() {
+    if (DEMO_MODE) return;
+    try {
+      const k = SNAP_PREFIX + dayKey();
+      if (localStorage.getItem(k)) return;      // 今天已经存过
+      localStorage.setItem(k, JSON.stringify({
+        v: 4, day: state.todoDay, items: state.todos, pool: state.pool,
+        history: state.history, savedAt: Date.now(), snap: true
+      }));
+      const keys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.indexOf(SNAP_PREFIX) === 0) keys.push(key);
+      }
+      keys.sort();
+      while (keys.length > 7) localStorage.removeItem(keys.shift());
+    } catch (e) {}
+  }
+
+  function latestSnap() {
+    const today = SNAP_PREFIX + dayKey();
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.indexOf(SNAP_PREFIX) === 0) keys.push(key);
+    }
+    keys.sort().reverse();
+    const pick = keys.find(k => k !== today) || keys[0];
+    return pick ? { key: pick, data: readJSON(pick, null) } : null;
+  }
+
   function saveTodos() {
     if (DEMO_MODE) return;
 
@@ -1082,6 +1116,7 @@
       try { localStorage.setItem(TODO_KEY, JSON.stringify(payload)); } catch (e2) {}
     }
     state.todoSource = "local";
+    snapToday();
   }
 
   // 把某一天的完整清单（含未完成）写进历史
@@ -1787,6 +1822,16 @@
     }
     $("#histNote").textContent = "共 " + histKeys.length + " 天";
     $("#backupNote").textContent = lastBackupText() + " · " + storageInfo();
+    const snap = latestSnap();
+    const btn = $("#btnSnap");
+    if (btn) {
+      if (snap) {
+        btn.style.display = "";
+        btn.textContent = "回滚到 " + snap.key.replace(SNAP_PREFIX, "").slice(5);
+      } else {
+        btn.style.display = "none";
+      }
+    }
   }
 
   function openStats() { renderStats(); statsEl.classList.add("on"); }
@@ -1892,6 +1937,14 @@
 
   $("#btnExport").addEventListener("click", exportBackup);
   $("#btnImportBackup").addEventListener("click", () => $("#fileBackup").click());
+
+  $("#btnSnap").addEventListener("click", () => {
+    const snap = latestSnap();
+    if (!snap || !snap.data) { alert("还没有可用的每日快照。"); return; }
+    const d = snap.key.replace(SNAP_PREFIX, "");
+    if (!window.confirm("回到 " + d + " 的状态？（当前的清单和历史会被替换）")) return;
+    applyBackup(snap.data);
+  });
 
   $("#btnRestoreBak").addEventListener("click", () => {
     const bak = readJSON(TODO_KEY + ".bak", null);
