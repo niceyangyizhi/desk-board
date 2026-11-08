@@ -380,6 +380,18 @@
   .hi.done .t{color:var(--muted);text-decoration:line-through;text-decoration-thickness:1px}
   #hist .empty{font-family:var(--serif);font-size:16px;color:var(--muted);padding:24px 0;letter-spacing:.02em}
 
+  .st-snap{display:flex;align-items:center;gap:14px;padding-top:10px;border-top:1px solid var(--rule);margin-top:8px}
+  .st-snap .k{font-size:10.5px;letter-spacing:.28em;color:var(--muted);flex:0 0 auto}
+  .st-snap .list{display:flex;gap:8px;flex-wrap:wrap}
+  .st-snap button{
+    background:transparent;border:1px solid var(--rule);border-radius:2px;
+    color:var(--ink-2);font-family:var(--sans);font-size:12px;letter-spacing:.06em;
+    padding:6px 12px;cursor:pointer;font-variant-numeric:tabular-nums;
+  }
+  .st-snap button.default{border-color:var(--ink-2);color:var(--ink)}
+  .st-snap button:active{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+  .st-snap .none{font-size:12px;color:var(--muted);letter-spacing:.04em}
+
   .st-foot{
     display:flex;align-items:center;gap:12px;
     padding-top:12px;margin-top:10px;border-top:1px solid var(--rule);
@@ -520,8 +532,12 @@
     <div id="hist"></div>
   </div>
 
+  <div class="st-snap">
+    <span class="k">历史快照</span>
+    <span class="list" id="snapList"></span>
+  </div>
+
   <div class="st-foot">
-    <button id="btnSnap">回滚快照</button>
     <span class="note" id="backupNote">从未备份</span>
   </div>
 </div>
@@ -726,7 +742,7 @@
     ]
   };
 
-  const BUILD = "v36";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
+  const BUILD = "v38";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -1051,14 +1067,13 @@
 
   const SNAP_PREFIX = "board.snap.";
 
-  function snapToday() {
-    if (DEMO_MODE) return;
+  // 跨天时把“刚结束的那一天”整份存下来
+  function writeSnap(day, items, pool, history) {
+    if (DEMO_MODE || !day) return;
     try {
-      const k = SNAP_PREFIX + dayKey();
-      if (localStorage.getItem(k)) return;      // 今天已经存过
-      localStorage.setItem(k, JSON.stringify({
-        v: 4, day: state.todoDay, items: state.todos, pool: state.pool,
-        history: state.history, savedAt: Date.now(), snap: true
+      localStorage.setItem(SNAP_PREFIX + day, JSON.stringify({
+        v: 4, day: day, items: items, pool: pool, history: history,
+        savedAt: Date.now(), snap: true
       }));
       const keys = [];
       for (let i = 0; i < localStorage.length; i++) {
@@ -1068,6 +1083,17 @@
       keys.sort();
       while (keys.length > 7) localStorage.removeItem(keys.shift());
     } catch (e) {}
+  }
+
+  function allSnaps() {
+    const out = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.indexOf(SNAP_PREFIX) === 0) {
+        out.push({ key: key, data: readJSON(key, null) });
+      }
+    }
+    return out.filter(x => x.data && Array.isArray(x.data.items)).sort((a, b) => (a.key < b.key ? 1 : -1));
   }
 
   function latestSnap() {
@@ -1113,7 +1139,6 @@
       try { localStorage.setItem(TODO_KEY, JSON.stringify(payload)); } catch (e2) {}
     }
     state.todoSource = "local";
-    snapToday();
   }
 
   // 把某一天的完整清单（含未完成）写进历史
@@ -1130,6 +1155,8 @@
     const today = dayKey();
     if (!state.todoDay) { state.todoDay = today; return false; }
     if (state.todoDay === today) return false;
+
+    writeSnap(state.todoDay, state.todos, state.pool, state.history);   // 前一天整份留档
 
     if (CONFIG.todos.dailyArchive) {
       snapshotDay(state.todoDay, state.todos);
@@ -1791,14 +1818,20 @@
     }
     $("#histNote").textContent = "共 " + histKeys.length + " 天";
     $("#backupNote").textContent = lastBackupText() + " · " + storageInfo();
-    const snap = latestSnap();
-    const btn = $("#btnSnap");
-    if (btn) {
-      if (snap) {
-        btn.style.display = "";
-        btn.textContent = "回滚到 " + snap.key.replace(SNAP_PREFIX, "").slice(5);
+    const snaps = allSnaps();
+    const list = $("#snapList");
+    if (list) {
+      if (!snaps.length) {
+        list.innerHTML = '<span class="none">还没有快照，明天起每天一份，保留 7 天</span>';
       } else {
-        btn.style.display = "none";
+        const p = nowParts();
+        const y = new Date(Date.UTC(p.y, p.m - 1, p.d) - 86400000);
+        const yKey = y.getUTCFullYear() + "-" + pad2(y.getUTCMonth() + 1) + "-" + pad2(y.getUTCDate());
+        list.innerHTML = snaps.map((sn, i) => {
+          const d = sn.key.replace(SNAP_PREFIX, "");
+          const label = (i === 0 && d === yKey) ? "昨天" : d.slice(5);
+          return '<button data-day="' + d + '"' + (i === 0 ? ' class="default"' : "") + ">" + label + "</button>";
+        }).join("");
       }
     }
   }
@@ -1842,7 +1875,7 @@
         state.history[k] = { items: d.items, at: d.at || 0 };
       }
     });
-    state.todoDay = data.day || dayKey();
+    state.todoDay = dayKey();   // 恢复的内容落到今天，避免立刻又被跨天归档
     saveTodos();
     renderTodos();
     renderStats();
@@ -1906,15 +1939,16 @@
   $("#btnExport").addEventListener("click", exportBackup);
   $("#btnImportBackup").addEventListener("click", () => $("#fileBackup").click());
 
-  $("#btnSnap").addEventListener("click", () => {
-    const snap = latestSnap();
-    if (!snap || !snap.data) { alert("还没有可用的每日快照。"); return; }
-    const d = snap.key.replace(SNAP_PREFIX, "");
-    const t = snap.data.savedAt
-      ? new Intl.DateTimeFormat("zh-CN", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(snap.data.savedAt))
+  $("#snapList").addEventListener("click", e => {
+    const btn = e.target.closest("button[data-day]");
+    if (!btn) return;
+    const snap = readJSON(SNAP_PREFIX + btn.dataset.day, null);
+    if (!snap || !Array.isArray(snap.items)) { alert("这份快照读不出来了。"); return; }
+    const t = snap.savedAt
+      ? new Intl.DateTimeFormat("zh-CN", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(snap.savedAt))
       : "";
-    if (!window.confirm("回到 " + d + (t ? " " + t : "") + " 的状态？（当前的清单和历史会被替换）")) return;
-    applyBackup(snap.data);
+    if (!window.confirm("回到 " + btn.dataset.day + (t ? " " + t : "") + " 的状态？（当前的清单和历史会被替换）")) return;
+    applyBackup(snap);
   });
 
   $("#btnRestoreBak").addEventListener("click", () => {
