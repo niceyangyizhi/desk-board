@@ -172,11 +172,11 @@
     font-size:14px;letter-spacing:.14em;color:var(--ink-2);
     cursor:pointer;
   }
-  .addline .plus{
-    display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
-    width:16px;height:16px;border:1px solid var(--rule);border-radius:2px;
-    font-size:13px;line-height:1;color:var(--muted);
+  #btnStatsLine{
+    padding:0;background:none;border:none;cursor:pointer;
+    font-family:var(--sans);font-size:14px;letter-spacing:.14em;color:var(--ink-2);
   }
+  #btnStatsLine:active{color:var(--ink)}
   .addline .more{margin-left:auto;font-size:12px;letter-spacing:.08em;opacity:.9}
   #poolBtn{
     margin-left:14px;padding:0;background:none;border:none;
@@ -441,8 +441,8 @@
   <section id="left">
     <div class="sec" id="todoHead"><span>今日</span><span class="n" id="todoProgress">0/0</span><span id="todoPager"></span></div>
     <ul id="todoList"></ul>
-    <div class="addline" id="addLine" role="button" tabindex="0">
-      <span class="plus">＋</span><span>添加待办</span>
+    <div class="addline">
+      <button id="btnStatsLine" type="button">统计</button>
       <span class="more" id="addMore"></span>
       <button id="poolBtn" type="button">以后 ›</button>
     </div>
@@ -482,10 +482,11 @@
   <div id="sheetList"></div>
 
   <div class="sheet-foot">
-    <button id="btnStats">统计</button>
-    <button id="btnClearDone">清理已完成</button>
-    <button id="btnImport">从 todos.json 导入</button>
-    <span class="note">存在本机 · 每天自动留档 · 统计页可备份</span>
+    <button id="btnExport">导出备份</button>
+    <button id="btnImportBackup">恢复备份</button>
+    <button id="btnRestoreBak">恢复上一版</button>
+    <input type="file" id="fileBackup" accept="application/json,.json" hidden>
+    <span class="note">存在本机 · 每天自动留档</span>
   </div>
 </div>
 </div>
@@ -520,11 +521,7 @@
   </div>
 
   <div class="st-foot">
-    <button id="btnExport">导出备份</button>
-    <button id="btnImportBackup">恢复备份</button>
-    <button id="btnRestoreBak">恢复上一版</button>
     <button id="btnSnap">回滚快照</button>
-    <input type="file" id="fileBackup" accept="application/json,.json" hidden>
     <span class="note" id="backupNote">从未备份</span>
   </div>
 </div>
@@ -729,7 +726,7 @@
     ]
   };
 
-  const BUILD = "v34";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
+  const BUILD = "v35";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -1507,7 +1504,6 @@
     $("#tabTodayN").textContent = state.todos.length ? state.todos.length : "";
     $("#tabPoolN").textContent = state.pool.length ? state.pool.length : "";
     $("#addForm").classList.toggle("pool", isPool);
-    $("#btnClearDone").style.display = isPool ? "none" : "";
     $("#addText").placeholder = isPool ? "记一件以后要做的事…" : "添加一件事…";
 
     const box = $("#sheetList");
@@ -1633,41 +1629,14 @@
 
   $("#btnClose").addEventListener("click", closeSheet);
 
-  $("#btnClearDone").addEventListener("click", () => {
-    if (!state.todos.some(t => t.done)) return;
-    state.todos = state.todos.filter(t => !t.done);
-    saveTodos();
-    renderTodos();
-    renderSheet();
-    renderStatus();
-  });
-
-  $("#btnImport").addEventListener("click", async () => {
-    try {
-      const j = await getJSON(CONFIG.todos.url, 6000);
-      const arr = Array.isArray(j) ? j : (j && j.items);
-      if (!Array.isArray(arr)) throw new Error("bad json");
-      if (state.todos.length && !window.confirm("用 todos.json 覆盖这台 iPad 上的清单？")) return;
-      state.todos = arr.map(normTodo).filter(t => t.text);
-      saveTodos();
-      renderTodos();
-      renderSheet();
-      renderStatus();
-    } catch (err) {
-      window.alert("读不到 todos.json。\n如果你是在本地双击打开的，浏览器不允许读同目录文件，属于正常现象。");
-    }
-  });
-
   $("#todoPager").addEventListener("click", e => {
     e.stopPropagation();
     nextPage();
   });
 
   // 入口：点「今日」、点「＋ 添加待办」、三击时钟
-  ["#todoHead", "#addLine"].forEach(sel => {
-    const el = $(sel);
-    if (el) el.addEventListener("click", () => openSheet("today"));
-  });
+  $("#todoHead").addEventListener("click", () => openSheet("today"));
+  $("#btnStatsLine").addEventListener("click", () => openStats());
 
   $("#poolBtn").addEventListener("click", e => { e.stopPropagation(); openSheet("pool"); });
 
@@ -1837,7 +1806,6 @@
   function openStats() { renderStats(); statsEl.classList.add("on"); }
   function closeStats() { statsEl.classList.remove("on"); }
 
-  $("#btnStats").addEventListener("click", openStats);
   $("#btnStatsClose").addEventListener("click", closeStats);
   $("#hist").addEventListener("click", e => {
     const row = e.target.closest(".hrow");
