@@ -726,7 +726,7 @@
     ]
   };
 
-  const BUILD = "v35";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
+  const BUILD = "v36";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -1910,7 +1910,10 @@
     const snap = latestSnap();
     if (!snap || !snap.data) { alert("还没有可用的每日快照。"); return; }
     const d = snap.key.replace(SNAP_PREFIX, "");
-    if (!window.confirm("回到 " + d + " 的状态？（当前的清单和历史会被替换）")) return;
+    const t = snap.data.savedAt
+      ? new Intl.DateTimeFormat("zh-CN", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(snap.data.savedAt))
+      : "";
+    if (!window.confirm("回到 " + d + (t ? " " + t : "") + " 的状态？（当前的清单和历史会被替换）")) return;
     applyBackup(snap.data);
   });
 
