@@ -728,7 +728,7 @@
     ]
   };
 
-  const BUILD = "v31";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
+  const BUILD = "v33";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -1024,7 +1024,8 @@
   /* =====================================================================
      9. 待办（本地存储，iPad 上直接增删改）
      ===================================================================== */
-  const TODO_KEY = "board.todos";
+  const TODO_KEY = "board.todos.v2";      // 新键：旧页面还在用 board.todos，碰不到这里
+  const TODO_KEY_LEGACY = "board.todos";  // 只在首次迁移时读一次
 
   function dayKey(p) {
     p = p || nowParts();
@@ -1144,9 +1145,14 @@
     }
 
     let raw = readJSON(TODO_KEY, null);
+    let needSave = false;
+    if (!raw) {
+      const legacy = readJSON(TODO_KEY_LEGACY, null);
+      if (legacy && Array.isArray(legacy.items)) { raw = legacy; needSave = true; }   // 从旧键迁移
+    }
     if (!raw) {
       const bak = readJSON(TODO_KEY + ".bak", null);
-      if (bak && Array.isArray(bak.items)) raw = bak;   // 主存储没了，用上一份快照顶上
+      if (bak && Array.isArray(bak.items)) { raw = bak; needSave = true; }   // 主存储没了，用快照顶上
     }
 
     if (raw && Array.isArray(raw.items)) {
@@ -1175,6 +1181,7 @@
       state.todosSavedAt = raw.savedAt || 0;
       state.todoSource = "local";
       rollOverDay();
+      if (needSave) saveTodos();   // 迁移/回滚后立刻落到新键
     } else {
       // 只有本地确实没有数据时才播种；已有数据（哪怕结构异常）绝不覆盖
       state.todos = [];
