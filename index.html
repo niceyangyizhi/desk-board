@@ -189,6 +189,12 @@
   /* ---------- 底部：健康提示 + 状态 ---------- */
   #footarea{margin-top:auto;padding-top:12px;border-top:1px solid var(--rule)}
   #tipbar{display:flex;align-items:baseline;gap:16px;min-width:0}
+  #tip{flex:1 1 auto;min-width:0}
+  #motto{
+    flex:0 0 auto;
+    font-family:var(--serif);font-size:15px;letter-spacing:.22em;color:var(--ink-2);
+    padding-left:18px;border-left:1px solid var(--rule);white-space:nowrap;
+  }
   #tipbar .k{flex:0 0 auto;font-size:10.5px;letter-spacing:.3em;color:var(--muted)}
   #tip{
     font-family:var(--serif);font-size:17px;line-height:1.5;letter-spacing:.02em;
@@ -445,6 +451,7 @@
     <div id="tipbar">
       <span class="k" id="tipLabel">健康提示</span>
       <span id="tip">—</span>
+      <span id="motto"></span>
     </div>
     <div id="statusline">
       <span id="statusL">正在载入</span>
@@ -673,6 +680,9 @@
       ]
     },
 
+    // 底部右侧每天轮换的一句原则
+    mottos: ["以终为始", "要事第一", "积极主动", "高效工作", "不玩愚蠢的游戏"],
+
     display: {
       nightMode: "dim",     // "dim" 暗纸 / "invert" 反色 / "off" 不切换
       nightStart: 22,       // 22 点后进入夜间
@@ -716,7 +726,7 @@
     ]
   };
 
-  const BUILD = "v26";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
+  const BUILD = "v27";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -864,7 +874,8 @@
 
     applyNight(p.hh);
     if (dayChanged) renderTodos();
-    renderTip();   // 每分钟比对一次，跨时段时自动换
+    renderTip();    // 每分钟比对一次，跨时段时自动换
+    renderMotto();  // 每天换一句
   }
 
   let nightClass = "";
@@ -1352,6 +1363,18 @@
     const dur = to > from ? to - from : to + 24 - from;
     const elapsed = h >= from ? h - from : h + 24 - from;
     return elapsed < dur / 2;
+  }
+
+  let mottoText = "";
+  function renderMotto() {
+    const list = CONFIG.mottos || [];
+    if (!list.length) return;
+    const p = nowParts();
+    const t = list[dayOfYear(p.y, p.m, p.d) % list.length];
+    if (t === mottoText) return;
+    mottoText = t;
+    const el = $("#motto");
+    if (el) el.textContent = t;
   }
 
   function renderTip() {
