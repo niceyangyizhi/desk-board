@@ -522,6 +522,7 @@
   <div class="st-foot">
     <button id="btnExport">导出备份</button>
     <button id="btnImportBackup">恢复备份</button>
+    <button id="btnRestoreBak">恢复上一版</button>
     <input type="file" id="fileBackup" accept="application/json,.json" hidden>
     <span class="note" id="backupNote">从未备份</span>
   </div>
@@ -727,7 +728,7 @@
     ]
   };
 
-  const BUILD = "v30";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
+  const BUILD = "v31";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -1051,6 +1052,14 @@
 
   function saveTodos() {
     if (DEMO_MODE) return;
+
+    // 存储里已经有更新的版本（多半是另一个页面写的）：同步过来，别覆盖
+    const cur = readJSON(TODO_KEY, null);
+    if (cur && (cur.savedAt || 0) > (state.todosSavedAt || 0) + 1000) {
+      syncFromStorage();
+      return;
+    }
+
     const now = Date.now();
     state.todosSavedAt = now;
     const payload = {
@@ -1062,6 +1071,8 @@
       savedAt: now
     };
     try {
+      const prev = localStorage.getItem(TODO_KEY);
+      if (prev) localStorage.setItem(TODO_KEY + ".bak", prev);
       localStorage.setItem(TODO_KEY, JSON.stringify(payload));
     } catch (err) {
       // 超出本地配额：丢掉最老的一半历史再试一次
@@ -1132,7 +1143,11 @@
       return;
     }
 
-    const raw = readJSON(TODO_KEY, null);
+    let raw = readJSON(TODO_KEY, null);
+    if (!raw) {
+      const bak = readJSON(TODO_KEY + ".bak", null);
+      if (bak && Array.isArray(bak.items)) raw = bak;   // 主存储没了，用上一份快照顶上
+    }
 
     if (raw && Array.isArray(raw.items)) {
       state.todos = raw.items.map(normTodo).filter(t => t.text);
@@ -1161,11 +1176,11 @@
       state.todoSource = "local";
       rollOverDay();
     } else {
-      // 第一次运行：用 todos.json 播一次种，之后不再自动覆盖
+      // 只有本地确实没有数据时才播种；已有数据（哪怕结构异常）绝不覆盖
       state.todos = [];
       state.pool = [];
       state.history = {};
-      if (CONFIG.todos.seedFromJson) {
+      if (!raw && CONFIG.todos.seedFromJson) {
         try {
           const j = await getJSON(CONFIG.todos.url, 5000);
           const arr = Array.isArray(j) ? j : (j && j.items);
@@ -1764,7 +1779,7 @@
       }).join("");
     }
     $("#histNote").textContent = "共 " + histKeys.length + " 天";
-    $("#backupNote").textContent = lastBackupText();
+    $("#backupNote").textContent = lastBackupText() + " · " + storageInfo();
   }
 
   function openStats() { renderStats(); statsEl.classList.add("on"); }
@@ -1814,6 +1829,19 @@
     renderStatus();
   }
 
+  function storageInfo() {
+    try {
+      const raw = localStorage.getItem(TODO_KEY);
+      if (!raw) return "本地无数据";
+      const kb = (raw.length / 1024).toFixed(1);
+      const s = JSON.parse(raw);
+      const hm = s.savedAt
+        ? new Intl.DateTimeFormat("zh-CN", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(s.savedAt))
+        : "—";
+      return kb + " KB · 存于 " + hm;
+    } catch (e) { return ""; }
+  }
+
   function lastBackupText() {
     const at = +readJSON(BACKUP_KEY, 0) || 0;
     if (!at) return "从未备份";
@@ -1857,6 +1885,13 @@
 
   $("#btnExport").addEventListener("click", exportBackup);
   $("#btnImportBackup").addEventListener("click", () => $("#fileBackup").click());
+
+  $("#btnRestoreBak").addEventListener("click", () => {
+    const bak = readJSON(TODO_KEY + ".bak", null);
+    if (!bak || !Array.isArray(bak.items)) { alert("没有可用的上一版备份。"); return; }
+    if (!window.confirm("用上一版备份覆盖当前清单？（当前内容会被替换）")) return;
+    applyBackup(bak);
+  });
 
   $("#fileBackup").addEventListener("change", e => {
     const f = e.target.files && e.target.files[0];
