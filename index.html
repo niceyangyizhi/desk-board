@@ -192,9 +192,10 @@
   #tip{flex:1 1 auto;min-width:0}
   #motto{
     flex:0 0 auto;
-    font-family:var(--serif);font-size:15px;letter-spacing:.22em;color:var(--ink-2);
-    padding-left:18px;border-left:1px solid var(--rule);white-space:nowrap;
+    font-family:var(--serif);font-size:14px;letter-spacing:.16em;color:var(--ink-2);
+    padding-left:34px;white-space:nowrap;
   }
+  #motto .sep{margin:0 11px;color:var(--rule);letter-spacing:0}
   #tipbar .k{flex:0 0 auto;font-size:10.5px;letter-spacing:.3em;color:var(--muted)}
   #tip{
     font-family:var(--serif);font-size:17px;line-height:1.5;letter-spacing:.02em;
@@ -726,7 +727,7 @@
     ]
   };
 
-  const BUILD = "v27";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
+  const BUILD = "v28";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -875,7 +876,7 @@
     applyNight(p.hh);
     if (dayChanged) renderTodos();
     renderTip();    // 每分钟比对一次，跨时段时自动换
-    renderMotto();  // 每天换一句
+    renderMotto();
   }
 
   let nightClass = "";
@@ -1365,16 +1366,16 @@
     return elapsed < dur / 2;
   }
 
-  let mottoText = "";
+  let mottoDone = false;
   function renderMotto() {
+    if (mottoDone) return;
     const list = CONFIG.mottos || [];
     if (!list.length) return;
-    const p = nowParts();
-    const t = list[dayOfYear(p.y, p.m, p.d) % list.length];
-    if (t === mottoText) return;
-    mottoText = t;
+    mottoDone = true;
     const el = $("#motto");
-    if (el) el.textContent = t;
+    if (el) {
+      el.innerHTML = list.map(t => esc(t)).join('<span class="sep">·</span>');
+    }
   }
 
   function renderTip() {
