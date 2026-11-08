@@ -380,17 +380,38 @@
   .hi.done .t{color:var(--muted);text-decoration:line-through;text-decoration-thickness:1px}
   #hist .empty{font-family:var(--serif);font-size:16px;color:var(--muted);padding:24px 0;letter-spacing:.02em}
 
-  .st-snap{display:flex;align-items:center;gap:14px;padding-top:10px;border-top:1px solid var(--rule);margin-top:8px}
-  .st-snap .k{font-size:10.5px;letter-spacing:.28em;color:var(--muted);flex:0 0 auto}
-  .st-snap .list{display:flex;gap:8px;flex-wrap:wrap}
-  .st-snap button{
-    background:transparent;border:1px solid var(--rule);border-radius:2px;
-    color:var(--ink-2);font-family:var(--sans);font-size:12px;letter-spacing:.06em;
-    padding:6px 12px;cursor:pointer;font-variant-numeric:tabular-nums;
+  /* 历史快照弹层 */
+  #snapModal{
+    position:fixed;inset:0;z-index:40;display:none;
+    align-items:center;justify-content:center;
+    background:rgba(20,18,12,.18);
   }
-  .st-snap button.default{border-color:var(--ink-2);color:var(--ink)}
-  .st-snap button:active{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-  .st-snap .none{font-size:12px;color:var(--muted);letter-spacing:.04em}
+  #snapModal.on{display:flex}
+  .snap-box{
+    background:var(--paper);color:var(--ink);
+    border:1px solid var(--ink-2);border-radius:2px;
+    width:440px;max-width:84vw;padding:22px 24px 18px;
+    box-shadow:0 12px 40px rgba(0,0,0,.14);
+  }
+  .snap-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding-bottom:12px;border-bottom:1px solid var(--rule)}
+  .snap-head h3{font-family:var(--serif);font-weight:400;font-size:20px;letter-spacing:.14em;margin:0}
+  .snap-head .x{
+    background:transparent;border:1px solid var(--rule);border-radius:2px;
+    color:var(--ink-2);font-size:12px;letter-spacing:.14em;padding:6px 14px;cursor:pointer;
+  }
+  .snap-list{margin-top:6px;max-height:320px;overflow:auto}
+  .snap-row{
+    width:100%;display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+    background:none;border:none;border-bottom:1px solid var(--rule);
+    padding:12px 2px;cursor:pointer;
+    font-family:var(--sans);font-size:14px;color:var(--ink);letter-spacing:.04em;
+  }
+  .snap-row:last-child{border-bottom:none}
+  .snap-row:active{background:rgba(0,0,0,.04)}
+  .snap-row .n{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .snap-row.default .d{font-weight:500}
+  .snap-list .none{font-size:13px;color:var(--muted);padding:18px 0}
+  .snap-hint{font-size:11.5px;color:var(--muted);line-height:1.8;margin:12px 0 0;letter-spacing:.03em}
 
   .st-foot{
     display:flex;align-items:center;gap:12px;
@@ -532,13 +553,20 @@
     <div id="hist"></div>
   </div>
 
-  <div class="st-snap">
-    <span class="k">历史快照</span>
-    <span class="list" id="snapList"></span>
-  </div>
-
   <div class="st-foot">
+    <button id="btnSnapOpen">历史快照</button>
     <span class="note" id="backupNote">从未备份</span>
+  </div>
+</div>
+
+<div id="snapModal">
+  <div class="snap-box">
+    <div class="snap-head">
+      <h3>历史快照</h3>
+      <button class="x" id="btnSnapClose">关闭</button>
+    </div>
+    <div id="snapList" class="snap-list"></div>
+    <p class="snap-hint">每天跨天时自动存一份，保留最近 7 天；点一行可回到那天的状态。</p>
   </div>
 </div>
 
@@ -742,7 +770,7 @@
     ]
   };
 
-  const BUILD = "v38";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
+  const BUILD = "v39";   // 改版时 +1，页脚可见，用来确认主屏 App 拿到的是哪一版
 
   const params = new URLSearchParams(location.search);
   const DEMO_MODE = params.has("demo");
@@ -1818,22 +1846,6 @@
     }
     $("#histNote").textContent = "共 " + histKeys.length + " 天";
     $("#backupNote").textContent = lastBackupText() + " · " + storageInfo();
-    const snaps = allSnaps();
-    const list = $("#snapList");
-    if (list) {
-      if (!snaps.length) {
-        list.innerHTML = '<span class="none">还没有快照，明天起每天一份，保留 7 天</span>';
-      } else {
-        const p = nowParts();
-        const y = new Date(Date.UTC(p.y, p.m - 1, p.d) - 86400000);
-        const yKey = y.getUTCFullYear() + "-" + pad2(y.getUTCMonth() + 1) + "-" + pad2(y.getUTCDate());
-        list.innerHTML = snaps.map((sn, i) => {
-          const d = sn.key.replace(SNAP_PREFIX, "");
-          const label = (i === 0 && d === yKey) ? "昨天" : d.slice(5);
-          return '<button data-day="' + d + '"' + (i === 0 ? ' class="default"' : "") + ">" + label + "</button>";
-        }).join("");
-      }
-    }
   }
 
   function openStats() { renderStats(); statsEl.classList.add("on"); }
@@ -1939,6 +1951,35 @@
   $("#btnExport").addEventListener("click", exportBackup);
   $("#btnImportBackup").addEventListener("click", () => $("#fileBackup").click());
 
+  function renderSnapList() {
+    const snaps = allSnaps();
+    const box = $("#snapList");
+    if (!snaps.length) {
+      box.innerHTML = '<div class="none">还没有快照。跨过一天之后，这里会出现「昨天」。</div>';
+      return;
+    }
+    const p = nowParts();
+    const y = new Date(Date.UTC(p.y, p.m - 1, p.d) - 86400000);
+    const yKey = y.getUTCFullYear() + "-" + pad2(y.getUTCMonth() + 1) + "-" + pad2(y.getUTCDate());
+    box.innerHTML = snaps.map((sn, i) => {
+      const d = sn.key.replace(SNAP_PREFIX, "");
+      const label = (i === 0 && d === yKey) ? "昨天" : d.slice(5);
+      const n = (sn.data.items || []).length;
+      const pn = (sn.data.pool || []).length;
+      return '<button class="snap-row' + (i === 0 ? " default" : "") + '" data-day="' + d + '">' +
+        "<span class=\"d\">" + label + "</span>" +
+        '<span class="n">' + n + " 条" + (pn ? " · 以后 " + pn : "") + "</span>" +
+      "</button>";
+    }).join("");
+  }
+
+  function openSnapModal() { renderSnapList(); $("#snapModal").classList.add("on"); }
+  function closeSnapModal() { $("#snapModal").classList.remove("on"); }
+
+  $("#btnSnapOpen").addEventListener("click", openSnapModal);
+  $("#btnSnapClose").addEventListener("click", closeSnapModal);
+  $("#snapModal").addEventListener("click", e => { if (e.target.id === "snapModal") closeSnapModal(); });
+
   $("#snapList").addEventListener("click", e => {
     const btn = e.target.closest("button[data-day]");
     if (!btn) return;
@@ -1949,6 +1990,7 @@
       : "";
     if (!window.confirm("回到 " + btn.dataset.day + (t ? " " + t : "") + " 的状态？（当前的清单和历史会被替换）")) return;
     applyBackup(snap);
+    closeSnapModal();
   });
 
   $("#btnRestoreBak").addEventListener("click", () => {
